@@ -1,14 +1,17 @@
 package org.firstinspires.ftc.teamcode.auto;
 
+import org.firstinspires.ftc.teamcode.auto.fsm.GenericFSM5;
+
 import java.util.Optional;
 
 public class FSM5Container {
 
     enum State {STATE_0, STATE_1, STATE_2, STATE_3, STATE_4, STATE_5, STATE_6, STATE_7}
 
-    enum Event {E0, E1, E2, E3, E4, E5, E6}
+    enum Event {E0, E1, E2, E3, E4, E5, E6, ALL_OTHER}
 
-    private final GenericFSM5<State, Event> FSM5 = new GenericFSM5<>(State.STATE_0, Event.class);
+    private final GenericFSM5<State, Event> FSM5 =
+            new GenericFSM5<>(State.STATE_0, State.class, Event.class);
 
     public FSM5Container() {}
 

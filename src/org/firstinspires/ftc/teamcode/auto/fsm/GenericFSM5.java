@@ -17,18 +17,18 @@
 // Damian Jan, and Purificacion Vidal. The source code was obtained from the CUJ
 // freeware download library.
 
-// The current Java version uses generic types for states and events and
-// provides for an "action routine" in the form of a Function<T, E> that
-// accept an argument T and returns the next event E. See the two overloads
-// of processEvent below.
+// The current Java version uses generic enum types for states and events
+// and provides for an "action routine" in the form of a Supplier<E> that
+// returns an Optional next event E.
 
 package org.firstinspires.ftc.teamcode.auto.fsm;
 
 //** import org.firstinspires.ftc.ftcdevcommon.intellij.RobotLogCommon;
 
-import java.util.*;
+import java.util.EnumMap;
+import java.util.Optional;
+import java.util.Set;
 import java.util.function.Supplier;
-import java.util.stream.Collectors;
 
 // 12/26/2021 Based on a combination of FSM3 and FSM4, FSM5 provides
 // for the storing of a Supplier in the FSM itself but eliminates
@@ -42,21 +42,29 @@ public class GenericFSM5<S extends Enum<S>, E extends Enum<E>> {
     private static final String TAG = GenericFSM5.class.getSimpleName();
     public static final String ALL_OTHER = "ALL_OTHER";
 
-    // The FSM is a Map whose key is the current state (S); the associated
-    // value is a second Map, Map<E, Transition>. The key is an event and
-    // the value is an instance of the class Transition, which contains
-    // two fields: 1. The next state and 2. An Optional Supplier that
-    // returns an Optional next event which, if present, will cause the
-    // state machine to make a transition immediately based on the next
-    // state and the next event. That is, the state machine makes an
-    // internal transition without an external event.
-    private final Map<S, Map<E, Transition>> FSM = new HashMap<>();
+    // The FSM is an EnumMap whose key is the current state (S); the
+    // associated value is a second EnumMap<E, Transition>. The key is
+    // an event and the value is an instance of the class Transition,
+    // which contains two fields: 1. The next state and 2. A Supplier
+    // that returns an Optional next event which, if present, will cause
+    // the state machine to make a transition immediately based on the
+    // next state and the next event. That is, the state machine makes
+    // an internal transition automatically without an external event.
+    private final EnumMap<S, EnumMap<E, Transition>> FSM;
     private S currentState;
+    private final Class<S> stateClass;
     private final Class<E> eventClass;
+    private final E allOtherEvent; // special catch-all event; see usage below
 
-    public GenericFSM5(S pInitialState, Class<E> pEventClass) {
+    public GenericFSM5(S pInitialState, Class<S> pStateClass, Class<E> pEventClass) {
         currentState = pInitialState;
+        stateClass = pStateClass;
+        FSM = new EnumMap<>(stateClass);
         eventClass = pEventClass;
+
+        //**TODO if you don't want to require the user to include ALL_OTHER as
+        // an Event enum value, use try/catch here and test below.
+        allOtherEvent = E.valueOf(eventClass, ALL_OTHER);
     }
 
     // Define the transitions in the state machine by calling either of
@@ -75,12 +83,12 @@ public class GenericFSM5<S extends Enum<S>, E extends Enum<E>> {
         // that must already exist as its value.
         if (FSM.containsKey(pSourceState)) {
             // Get the collection of events that can occur in this state.
-            Map<E, Transition> eventMap = FSM.get(pSourceState);
+            EnumMap<E, Transition> eventMap = FSM.get(pSourceState);
             if (eventMap == null)
                 throw new IllegalStateException(
                         "FSM: no events associated with " + pSourceState.toString());
 
-            // The event must not already be in the Map.
+            // The event must not already be in the map.
             if (eventMap.containsKey(pEvent))
                 throw new IllegalStateException("FSM: event "
                         + pEvent.toString() + " already present for state " + currentState);
@@ -88,7 +96,7 @@ public class GenericFSM5<S extends Enum<S>, E extends Enum<E>> {
         } else {
             // Insert a new source state along with its associated event and
             // transition into the collection.
-            Map<E, Transition> newEventMap = new HashMap<>();
+            EnumMap<E, Transition> newEventMap = new EnumMap<>(eventClass);
             newEventMap.put(pEvent, new Transition(pDestinationState, pActionRoutine));
             FSM.put(pSourceState, newEventMap);
         }
@@ -132,7 +140,7 @@ public class GenericFSM5<S extends Enum<S>, E extends Enum<E>> {
 
         // Use the current state as a key into the map of state transitions to
         // find the destination state and action routine.
-        Map<E, Transition> transitionMap = FSM.get(currentState);
+        EnumMap<E, Transition> transitionMap = FSM.get(currentState);
 
         // If the current state has a transition for the current
         // event, return the Transition now.
@@ -141,14 +149,11 @@ public class GenericFSM5<S extends Enum<S>, E extends Enum<E>> {
 
         // Otherwise check if the special catch-all event is present
         // and, if so, use its transition.
-        List<String> eventKeys = transitionMap.keySet().stream().
-                map(Enum::name).collect(Collectors.toList());
-
-        if (!eventKeys.contains(ALL_OTHER))
+        Set<E> eventKeySet = transitionMap.keySet();
+        if (!eventKeySet.contains(allOtherEvent))
             throw new IllegalStateException("FSM: event "
                     + pEvent.toString() + " not present for state " + currentState);
 
-        E allOtherEvent = E.valueOf(eventClass, ALL_OTHER);
         return transitionMap.get(allOtherEvent);
     }
 

@@ -8,7 +8,7 @@ public class FSM5Container {
 
     enum State {STATE_0, STATE_1, STATE_2, STATE_3, STATE_4, STATE_5, STATE_6, STATE_7}
 
-    enum Event {E0, E1, E2, E3, E4, E5, E6, ALL_OTHER}
+    enum Event {E0, E1, E2, E3, E4, E5, E6}
 
     private final GenericFSM5<State, Event> FSM5 =
             new GenericFSM5<>(State.STATE_0, State.class, Event.class);

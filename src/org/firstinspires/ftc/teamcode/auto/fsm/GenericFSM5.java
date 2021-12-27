@@ -62,9 +62,16 @@ public class GenericFSM5<S extends Enum<S>, E extends Enum<E>> {
         FSM = new EnumMap<>(stateClass);
         eventClass = pEventClass;
 
-        //**TODO if you don't want to require the user to include ALL_OTHER as
-        // an Event enum value, use try/catch here and test below.
-        allOtherEvent = E.valueOf(eventClass, ALL_OTHER);
+        // If the user has not included the catch-all ALL_OTHER as
+        // an Event enum value, set it null here.
+        E tempAllOtherEvent = null;
+        try {
+            tempAllOtherEvent = E.valueOf(eventClass, ALL_OTHER);
+        }
+        catch (IllegalArgumentException iex) {
+            tempAllOtherEvent = null;
+        }
+        allOtherEvent = tempAllOtherEvent;
     }
 
     // Define the transitions in the state machine by calling either of
@@ -150,7 +157,7 @@ public class GenericFSM5<S extends Enum<S>, E extends Enum<E>> {
         // Otherwise check if the special catch-all event is present
         // and, if so, use its transition.
         Set<E> eventKeySet = transitionMap.keySet();
-        if (!eventKeySet.contains(allOtherEvent))
+        if (allOtherEvent == null || !eventKeySet.contains(allOtherEvent))
             throw new IllegalStateException("FSM: event "
                     + pEvent.toString() + " not present for state " + currentState);
 

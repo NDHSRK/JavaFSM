@@ -8,7 +8,7 @@ public class FSM5Container {
 
     private enum State {START, GAMEPAD_2_Y_PRESSED, GAMEPAD_2_DPAD_UP_PRESSED,
         ELEVATOR_SAFE, ELEVATOR_AT_REQUESTED_LEVEL, DELIVERY_ARM_EXTENDED,
-        ELEVATOR_UP_AND_ARM_OUT}
+        ELEVATOR_UP_AND_ARM_OUT, GAMEPAD_2_B_PRESSED, GAMEPAD_2_X_PRESSED, FREIGHT_DELIVERED}
 
     private enum Event {
         GAMEPAD_2_Y, GAMEPAD_2_A, GAMEPAD_2_X, GAMEPAD_2_B,
@@ -153,7 +153,25 @@ public class FSM5Container {
 
         //**TODO 12/28/21 STOPPED HERE; above not desk checked ...
         // elevator at requested level and delivery arm extended
-        // valid: dump, retract and descend
+        // valid: deliver freight, retract and descend
+        FSM5.defineTransition(State.ELEVATOR_UP_AND_ARM_OUT, Event.GAMEPAD_2_B, State.GAMEPAD_2_B_PRESSED,
+                () -> {
+                    System.out.println("Tilt the carrier to deliver freight");
+                    System.out.println("Move the carrier to its rest position");
+                    return Optional.empty();
+                });
+
+        FSM5.defineTransition(State.ELEVATOR_UP_AND_ARM_OUT, Event.GAMEPAD_2_X, State.GAMEPAD_2_X_PRESSED,
+                () -> {
+                    System.out.println("Without delivering freight retract the delivery arm and lower the elevator");
+                    return Optional.empty();
+                });
+
+        FSM5.defineTransition(State.ELEVATOR_UP_AND_ARM_OUT, Event.ALL_OTHER, State.ELEVATOR_UP_AND_ARM_OUT,
+                () -> {
+                    System.out.println("Unsupported event, remaining at ELEVATOR_UP_AND_ARM_OUT");
+                    return Optional.empty();
+                });
 
         /*
 Tip the carrier down to deliver the block, wait 1000ms, raise the carrier to the rest position

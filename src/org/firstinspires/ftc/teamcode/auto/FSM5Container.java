@@ -6,12 +6,15 @@ import java.util.Optional;
 
 public class FSM5Container {
 
-    private enum State {START, GAMEPAD_2_Y_PRESSED, ELEVATOR_SAFE}
+    private enum State {START, GAMEPAD_2_Y_PRESSED, GAMEPAD_2_DPAD_UP_PRESSED,
+        ELEVATOR_SAFE, ELEVATOR_AT_REQUESTED_LEVEL, DELIVERY_ARM_EXTENDED,
+        ELEVATOR_UP_AND_ARM_OUT}
 
     private enum Event {
         GAMEPAD_2_Y, GAMEPAD_2_A, GAMEPAD_2_X, GAMEPAD_2_B,
         GAMEPAD_2_DPAD_UP, GAMEPAD_2_DPAD_DOWN, GAMEPAD_2_DPAD_LEFT,
-        GAMEPAD_2_DPAD_RIGHT, ELEVATOR_LEVEL_NOT_REST, ELEVATOR_MOTION_COMPLETE,
+        GAMEPAD_2_DPAD_RIGHT, ELEVATOR_LEVEL_NOT_REST, ELEVATOR_UP_TO_SAFE_COMPLETE,
+        ELEVATOR_UP_COMPLETE, DELIVERY_ARM_EXTENSION_COMPLETE,
         ALL_OTHER
     }
 
@@ -45,9 +48,6 @@ public class FSM5Container {
         sleep(750);
         Objects.requireNonNull(robot.freightCarrierServo).servo.setPosition(robot.freightCarrierServo.up);
         */
-
-        // Use the overload that supplies an event E1 that the FSM will use to
-        // make an internal transition.
         FSM5.defineTransition(State.START, Event.GAMEPAD_2_Y, State.GAMEPAD_2_Y_PRESSED,
                 () -> {
                     if (currentElevatorLevel != ElevatorLevel.REST)
@@ -71,19 +71,126 @@ public class FSM5Container {
                     return Optional.empty();
                 });
 
-        // ELEVATOR_MOTION_COMPLETE is an external event.
-        FSM5.defineTransition(State.GAMEPAD_2_Y_PRESSED, Event.ELEVATOR_MOTION_COMPLETE, State.ELEVATOR_SAFE,
+        // ELEVATOR_UP_TO_SAFE_COMPLETE is an external event.
+        FSM5.defineTransition(State.GAMEPAD_2_Y_PRESSED, Event.ELEVATOR_UP_TO_SAFE_COMPLETE, State.ELEVATOR_SAFE,
                 () -> {
                     System.out.println("Elevator is at the SAFE level");
                     return Optional.empty();
                 });
 
+        FSM5.defineTransition(State.GAMEPAD_2_Y_PRESSED, Event.ALL_OTHER, State.GAMEPAD_2_Y_PRESSED,
+                () -> {
+                    System.out.println("Unsupported event, remaining at GAMEPAD_2_Y_PRESSED");
+                    return Optional.empty();
+                });
 
+        /*
+        Simultaneously start to raise the elevator to level 3 and extend the freight delivery arm.
+        elevatorHeightLevel3 = new FTCButton(this, FTCButton.ButtonValue.GAMEPAD_2_DPAD_UP);
+        asyncMoveElevatorUp = Threading.launchAsync(callableMoveElevatorUp);
+        asyncMoveArm = Threading.launchAsync(callableMoveArm);
+        */
+        FSM5.defineTransition(State.ELEVATOR_SAFE, Event.GAMEPAD_2_DPAD_UP, State.GAMEPAD_2_DPAD_UP_PRESSED,
+                () -> {
+                    System.out.println("Start asynchronous elevator motion to LEVEL 3");
+                    System.out.println("Start asynchronous extension of the freight delivery arm");
+                    return Optional.empty();
+                });
+
+        FSM5.defineTransition(State.START, Event.ALL_OTHER, State.ELEVATOR_SAFE,
+                () -> {
+                    System.out.println("Unsupported event, returning to ELEVATOR_SAFE");
+                    return Optional.empty();
+                });
+
+        // Note that the elevator motion and the freight delivery arm motion
+        // may complete in either order.
+        // ELEVATOR_UP_COMPLETE is an external event.
+        FSM5.defineTransition(State.GAMEPAD_2_DPAD_UP_PRESSED, Event.ELEVATOR_UP_COMPLETE, State.ELEVATOR_AT_REQUESTED_LEVEL,
+                () -> {
+                    System.out.println("Elevator is at the requested level");
+                    System.out.println("Wait for the freight delivery arm extension");
+                    return Optional.empty();
+                });
+
+        // DELIVERY_ARM_EXTENSION_COMPLETE is an external event.
+        FSM5.defineTransition(State.GAMEPAD_2_DPAD_UP_PRESSED, Event.DELIVERY_ARM_EXTENSION_COMPLETE, State.DELIVERY_ARM_EXTENDED,
+                () -> {
+                    System.out.println("Delivery arm extension complete");
+                    System.out.println("Wait for the elevator to reach the requested level");
+                    return Optional.empty();
+                });
+
+        FSM5.defineTransition(State.GAMEPAD_2_DPAD_UP_PRESSED, Event.ALL_OTHER, State.GAMEPAD_2_DPAD_UP_PRESSED,
+                () -> {
+                    System.out.println("Unsupported event, returning to GAMEPAD_2_DPAD_UP_PRESSED");
+                    return Optional.empty();
+                });
+
+        FSM5.defineTransition(State.ELEVATOR_AT_REQUESTED_LEVEL, Event.DELIVERY_ARM_EXTENSION_COMPLETE, State.ELEVATOR_UP_AND_ARM_OUT,
+                () -> {
+                    System.out.println("Delivery arm extension complete");
+                    return Optional.empty();
+                });
+
+        FSM5.defineTransition(State.ELEVATOR_AT_REQUESTED_LEVEL, Event.ALL_OTHER, State.ELEVATOR_AT_REQUESTED_LEVEL,
+                () -> {
+                    System.out.println("Unsupported event, remaining at ELEVATOR_AT_REQUESTED_LEVEL");
+                    return Optional.empty();
+                });
+
+        FSM5.defineTransition(State.DELIVERY_ARM_EXTENDED, Event.ELEVATOR_UP_COMPLETE, State.ELEVATOR_UP_AND_ARM_OUT,
+                () -> {
+                    System.out.println("Elevator has reached the requested level");
+                    return Optional.empty();
+                });
+
+        FSM5.defineTransition(State.DELIVERY_ARM_EXTENDED, Event.ALL_OTHER, State.DELIVERY_ARM_EXTENDED,
+                () -> {
+                    System.out.println("Unsupported event, remaining at DELIVERY_ARM_EXTENDED");
+                    return Optional.empty();
+                });
+
+        //**TODO 12/28/21 STOPPED HERE; above not desk checked ...
+        // elevator at requested level and delivery arm extended
+        // valid: dump, retract and descend
+
+        /*
+Tip the carrier down to deliver the block, wait 1000ms, raise the carrier to the rest position
+// Don't dump freight if the robot is driving.
+// Disable driving while the freight carrier is moving.
+freightCarrier = new FTCButton(this, FTCButton.ButtonValue.GAMEPAD_2_B);
+if (currentElevatorLevel == ElevatorMotors.ElevatorLevel.REST) { ... not allowed
+   if (parallelDrive.driveLock.tryLock())
+      try {
+            Objects.requireNonNull(robot.freightCarrierServo).servo.setPosition(robot.freightCarrierServo.down);
+            sleep(1000);
+            robot.freightCarrierServo.servo.setPosition(robot.freightCarrierServo.rest);
+          } finally {
+             parallelDrive.driveLock.unlock();
+          }
+*/
+        /*
+Start the retraction, wait 1000ms for the arm to clear the shipping hub,
+then start the descent of the elevator to the safe position.
+retractArmAndDescend = new FTCButton(this, FTCButton.ButtonValue.GAMEPAD_2_X);
+if (currentElevatorLevel == ElevatorMotors.ElevatorLevel.REST || currentElevatorLevel == ElevatorMotors.ElevatorLevel.SAFE) { ... not allowed
+async_move_delivery_arm_in_and_elevator_down(Objects.requireNonNull(robot.freightDeliveryArm).rest, freightDeliveryArmVelocity,
+    Objects.requireNonNull(robot.elevatorMotors).safe, elevatorVelocity, ElevatorMotion.ElevatorAction.MOVE_AND_HOLD_VELOCITY);
+        asyncActionInProgress = AsyncAction.ARM_RETRACT_ELEVATOR_DOWN;
+        asyncMoveArm = Threading.launchAsync(callableMoveArm);
+        sleep(1000); // let the arm clear the shipping hub
+        asyncMoveElevatorDown = Threading.launchAsync(callableMoveElevatorDown);
+         */
         System.out.println("Starting the state machine");
         FSM5.processEvent(Event.GAMEPAD_2_Y);
         System.out.println("New current state " + FSM5.getCurrentState());
 
-        FSM5.processEvent(Event.ELEVATOR_MOTION_COMPLETE);
+        FSM5.processEvent(Event.ELEVATOR_UP_TO_SAFE_COMPLETE);
+        System.out.println("New current state " + FSM5.getCurrentState());
+
+        // Move the elevator up to level 3 and the freight delivery arm out.
+        FSM5.processEvent(Event.GAMEPAD_2_DPAD_UP);
         System.out.println("New current state " + FSM5.getCurrentState());
 
         System.out.println("DONE");

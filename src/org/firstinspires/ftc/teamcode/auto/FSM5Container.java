@@ -152,7 +152,7 @@ public class FSM5Container {
                 });
 
         //**TODO 12/28/21 STOPPED HERE; above not desk checked ...
-        // elevator at requested level and delivery arm extended
+        // Elevator at requested level and delivery arm extended
         // valid: deliver freight, retract and descend
         FSM5.defineTransition(State.ELEVATOR_UP_AND_ARM_OUT, Event.GAMEPAD_2_B, State.GAMEPAD_2_B_PRESSED,
                 () -> {
@@ -164,6 +164,8 @@ public class FSM5Container {
         FSM5.defineTransition(State.ELEVATOR_UP_AND_ARM_OUT, Event.GAMEPAD_2_X, State.GAMEPAD_2_X_PRESSED,
                 () -> {
                     System.out.println("Without delivering freight retract the delivery arm and lower the elevator");
+                    System.out.println("Start asynchronous retraction of the freight delivery arm");
+                    System.out.println("Start asynchronous elevator descent to SAFE");
                     return Optional.empty();
                 });
 
@@ -172,6 +174,23 @@ public class FSM5Container {
                     System.out.println("Unsupported event, remaining at ELEVATOR_UP_AND_ARM_OUT");
                     return Optional.empty();
                 });
+
+        FSM5.defineTransition(State.GAMEPAD_2_B_PRESSED, Event.GAMEPAD_2_X, State.GAMEPAD_2_X_PRESSED,
+                () -> {
+                    System.out.println("Start asynchronous retraction of the freight delivery arm");
+                    System.out.println("Start asynchronous elevator descent to SAFE");
+                    return Optional.empty();
+                });
+
+        FSM5.defineTransition(State.GAMEPAD_2_B_PRESSED, Event.ALL_OTHER, State.GAMEPAD_2_B_PRESSED,
+                () -> {
+                    System.out.println("Unsupported event, remaining at GAMEPAD_2_B_PRESSED");
+                    return Optional.empty();
+                });
+
+        // State.GAMEPAD_2_X_PRESSED
+        // Wait for both the arm and the elevator in either order
+
 
         /*
 Tip the carrier down to deliver the block, wait 1000ms, raise the carrier to the rest position

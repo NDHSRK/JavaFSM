@@ -8,13 +8,15 @@ public class FSM5Container {
 
     private enum State {START, GAMEPAD_2_Y_PRESSED, GAMEPAD_2_DPAD_UP_PRESSED,
         ELEVATOR_SAFE, ELEVATOR_AT_REQUESTED_LEVEL, DELIVERY_ARM_EXTENDED,
-        ELEVATOR_UP_AND_ARM_OUT, GAMEPAD_2_B_PRESSED, GAMEPAD_2_X_PRESSED, FREIGHT_DELIVERED}
+        ELEVATOR_UP_AND_ARM_OUT, GAMEPAD_2_B_PRESSED, GAMEPAD_2_X_PRESSED,
+        DELIVERY_ARM_RETRACTED, ELEVATOR_DOWN}
 
     private enum Event {
         GAMEPAD_2_Y, GAMEPAD_2_A, GAMEPAD_2_X, GAMEPAD_2_B,
         GAMEPAD_2_DPAD_UP, GAMEPAD_2_DPAD_DOWN, GAMEPAD_2_DPAD_LEFT,
         GAMEPAD_2_DPAD_RIGHT, ELEVATOR_LEVEL_NOT_REST, ELEVATOR_UP_TO_SAFE_COMPLETE,
-        ELEVATOR_UP_COMPLETE, DELIVERY_ARM_EXTENSION_COMPLETE,
+        ELEVATOR_UP_COMPLETE, DELIVERY_ARM_EXTENSION_COMPLETE, ELEVATOR_DOWN_COMPLETE,
+        DELIVERY_ARM_RETRACTION_COMPLETE,
         ALL_OTHER
     }
 
@@ -152,8 +154,21 @@ public class FSM5Container {
                 });
 
         //**TODO 12/28/21 STOPPED HERE; above not desk checked ...
-        // Elevator at requested level and delivery arm extended
-        // valid: deliver freight, retract and descend
+        /*
+Tip the carrier down to deliver the block, wait 1000ms, raise the carrier to the rest position
+// Don't dump freight if the robot is driving.
+// Disable driving while the freight carrier is moving.
+freightCarrier = new FTCButton(this, FTCButton.ButtonValue.GAMEPAD_2_B);
+if (currentElevatorLevel == ElevatorMotors.ElevatorLevel.REST) { ... not allowed
+   if (parallelDrive.driveLock.tryLock())
+      try {
+            Objects.requireNonNull(robot.freightCarrierServo).servo.setPosition(robot.freightCarrierServo.down);
+            sleep(1000);
+            robot.freightCarrierServo.servo.setPosition(robot.freightCarrierServo.rest);
+          } finally {
+             parallelDrive.driveLock.unlock();
+          }
+*/
         FSM5.defineTransition(State.ELEVATOR_UP_AND_ARM_OUT, Event.GAMEPAD_2_B, State.GAMEPAD_2_B_PRESSED,
                 () -> {
                     System.out.println("Tilt the carrier to deliver freight");
@@ -161,6 +176,18 @@ public class FSM5Container {
                     return Optional.empty();
                 });
 
+                /*
+Start the retraction, wait 1000ms for the arm to clear the shipping hub,
+then start the descent of the elevator to the safe position.
+retractArmAndDescend = new FTCButton(this, FTCButton.ButtonValue.GAMEPAD_2_X);
+if (currentElevatorLevel == ElevatorMotors.ElevatorLevel.REST || currentElevatorLevel == ElevatorMotors.ElevatorLevel.SAFE) { ... not allowed
+async_move_delivery_arm_in_and_elevator_down(Objects.requireNonNull(robot.freightDeliveryArm).rest, freightDeliveryArmVelocity,
+    Objects.requireNonNull(robot.elevatorMotors).safe, elevatorVelocity, ElevatorMotion.ElevatorAction.MOVE_AND_HOLD_VELOCITY);
+        asyncActionInProgress = AsyncAction.ARM_RETRACT_ELEVATOR_DOWN;
+        asyncMoveArm = Threading.launchAsync(callableMoveArm);
+        sleep(1000); // let the arm clear the shipping hub
+        asyncMoveElevatorDown = Threading.launchAsync(callableMoveElevatorDown);
+         */
         FSM5.defineTransition(State.ELEVATOR_UP_AND_ARM_OUT, Event.GAMEPAD_2_X, State.GAMEPAD_2_X_PRESSED,
                 () -> {
                     System.out.println("Without delivering freight retract the delivery arm and lower the elevator");
@@ -178,6 +205,7 @@ public class FSM5Container {
         FSM5.defineTransition(State.GAMEPAD_2_B_PRESSED, Event.GAMEPAD_2_X, State.GAMEPAD_2_X_PRESSED,
                 () -> {
                     System.out.println("Start asynchronous retraction of the freight delivery arm");
+                    System.out.println("Slight delay before starting to elevator descent");
                     System.out.println("Start asynchronous elevator descent to SAFE");
                     return Optional.empty();
                 });
@@ -190,35 +218,40 @@ public class FSM5Container {
 
         // State.GAMEPAD_2_X_PRESSED
         // Wait for both the arm and the elevator in either order
+        FSM5.defineTransition(State.GAMEPAD_2_X_PRESSED, Event.ELEVATOR_DOWN_COMPLETE, State.ELEVATOR_DOWN,
+                () -> {
+                    System.out.println("Elevator is at the SAFE level");
+                    System.out.println("Wait for the freight delivery arm retraction");
+                    return Optional.empty();
+                });
+
+        // DELIVERY_ARM_EXTENSION_COMPLETE is an external event.
+        FSM5.defineTransition(State.GAMEPAD_2_X_PRESSED, Event.DELIVERY_ARM_RETRACTION_COMPLETE, State.DELIVERY_ARM_RETRACTED,
+                () -> {
+                    System.out.println("Delivery arm retraction complete");
+                    System.out.println("Wait for the elevator to descend to the SAFE level");
+                    return Optional.empty();
+                });
+
+        FSM5.defineTransition(State.GAMEPAD_2_X_PRESSED, Event.ALL_OTHER, State.GAMEPAD_2_X_PRESSED,
+                () -> {
+                    System.out.println("Unsupported event, remaining at GAMEPAD_2_X_PRESSED");
+                    return Optional.empty();
+                });
+
+        FSM5.defineTransition(State.DELIVERY_ARM_RETRACTED, Event.ELEVATOR_DOWN_COMPLETE, State.ELEVATOR_SAFE,
+                () -> {
+                    System.out.println("Elevator has reached the SAFE level");
+                    return Optional.empty();
+                });
+
+        FSM5.defineTransition(State.ELEVATOR_DOWN, Event.DELIVERY_ARM_RETRACTION_COMPLETE, State.ELEVATOR_SAFE,
+                () -> {
+                    System.out.println("Delivery arm is retracted");
+                    return Optional.empty();
+                });
 
 
-        /*
-Tip the carrier down to deliver the block, wait 1000ms, raise the carrier to the rest position
-// Don't dump freight if the robot is driving.
-// Disable driving while the freight carrier is moving.
-freightCarrier = new FTCButton(this, FTCButton.ButtonValue.GAMEPAD_2_B);
-if (currentElevatorLevel == ElevatorMotors.ElevatorLevel.REST) { ... not allowed
-   if (parallelDrive.driveLock.tryLock())
-      try {
-            Objects.requireNonNull(robot.freightCarrierServo).servo.setPosition(robot.freightCarrierServo.down);
-            sleep(1000);
-            robot.freightCarrierServo.servo.setPosition(robot.freightCarrierServo.rest);
-          } finally {
-             parallelDrive.driveLock.unlock();
-          }
-*/
-        /*
-Start the retraction, wait 1000ms for the arm to clear the shipping hub,
-then start the descent of the elevator to the safe position.
-retractArmAndDescend = new FTCButton(this, FTCButton.ButtonValue.GAMEPAD_2_X);
-if (currentElevatorLevel == ElevatorMotors.ElevatorLevel.REST || currentElevatorLevel == ElevatorMotors.ElevatorLevel.SAFE) { ... not allowed
-async_move_delivery_arm_in_and_elevator_down(Objects.requireNonNull(robot.freightDeliveryArm).rest, freightDeliveryArmVelocity,
-    Objects.requireNonNull(robot.elevatorMotors).safe, elevatorVelocity, ElevatorMotion.ElevatorAction.MOVE_AND_HOLD_VELOCITY);
-        asyncActionInProgress = AsyncAction.ARM_RETRACT_ELEVATOR_DOWN;
-        asyncMoveArm = Threading.launchAsync(callableMoveArm);
-        sleep(1000); // let the arm clear the shipping hub
-        asyncMoveElevatorDown = Threading.launchAsync(callableMoveElevatorDown);
-         */
         System.out.println("Starting the state machine");
         FSM5.processEvent(Event.GAMEPAD_2_Y);
         System.out.println("New current state " + FSM5.getCurrentState());

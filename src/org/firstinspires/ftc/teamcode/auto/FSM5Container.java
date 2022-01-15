@@ -4,13 +4,15 @@ import org.firstinspires.ftc.teamcode.auto.fsm.GenericFSM5;
 
 import java.util.Optional;
 
+import static java.lang.Thread.sleep;
+
 public class FSM5Container {
 
     private enum State {
         START, GAMEPAD_2_Y_PRESSED, GAMEPAD_2_DPAD_UP_PRESSED,
         ELEVATOR_SAFE, ELEVATOR_AT_REQUESTED_LEVEL, DELIVERY_ARM_EXTENDED,
         ELEVATOR_UP_AND_ARM_OUT, GAMEPAD_2_B_PRESSED, GAMEPAD_2_X_PRESSED,
-        DELIVERY_ARM_RETRACTED, ELEVATOR_DOWN, ARM_RETRACTION_AND_ELEVATOR_DESCENT,
+        DELIVERY_ARM_RETRACTED, ELEVATOR_SAFE_AFTER_DESCENT, ARM_RETRACTION_AND_ELEVATOR_DESCENT,
         ARM_RETRACTION_AND_ELEVATOR_DESCENT_STARTED, WAIT_FOR_ARM_RETRACTION_AND_ELEVATOR_DESCENT
     }
 
@@ -34,7 +36,7 @@ public class FSM5Container {
     public FSM5Container() {
     }
 
-    public void testFSM5() {
+    public void testFSM5() throws InterruptedException {
 
         /*
         Test case to exercise the Finite State Machine FSM5 using buttons and actions
@@ -55,6 +57,7 @@ public class FSM5Container {
                     if (currentElevatorLevel != ElevatorLevel.REST)
                         return Optional.of(Event.ELEVATOR_LEVEL_NOT_REST);
 
+                    System.out.println("Event " + Event.GAMEPAD_2_Y);
                     System.out.println("Elevator is at REST");
                     System.out.println("Start asynchronous elevator motion to SAFE");
                     System.out.println("Wait then tilt the freight carrier up");
@@ -94,19 +97,14 @@ public class FSM5Container {
         */
         FSM5.defineTransition(State.ELEVATOR_SAFE, Event.GAMEPAD_2_DPAD_UP, State.GAMEPAD_2_DPAD_UP_PRESSED,
                 () -> {
+                    System.out.println("Event " + Event.GAMEPAD_2_DPAD_UP);
                     System.out.println("Start asynchronous elevator ascent to LEVEL 3");
                     System.out.println("Start asynchronous extension of the freight delivery arm");
                     return Optional.empty();
                 });
 
-        FSM5.defineTransition(State.START, Event.ALL_OTHER, State.ELEVATOR_SAFE,
-                () -> {
-                    System.out.println("Unsupported event, returning to ELEVATOR_SAFE");
-                    return Optional.empty();
-                });
-
         // Note that the elevator motion and the freight delivery arm motion may complete in either order.
-        // ELEVATOR_UP_COMPLETE is an external event triggered by thread completion.
+        // ELEVATOR_ASCENT_COMPLETE is an external event triggered by thread completion.
         FSM5.defineTransition(State.GAMEPAD_2_DPAD_UP_PRESSED, Event.ELEVATOR_ASCENT_COMPLETE, State.ELEVATOR_AT_REQUESTED_LEVEL,
                 () -> {
                     System.out.println("Elevator has ascended to the requested level");
@@ -163,6 +161,7 @@ public class FSM5Container {
         */
         FSM5.defineTransition(State.ELEVATOR_UP_AND_ARM_OUT, Event.GAMEPAD_2_B, State.GAMEPAD_2_B_PRESSED,
                 () -> {
+                    System.out.println("Event " + Event.GAMEPAD_2_B);
                     System.out.println("Tilt the carrier to deliver freight");
                     System.out.println("Wait for the freight to be delivered");
                     System.out.println("Move the carrier to its rest position");
@@ -174,12 +173,16 @@ public class FSM5Container {
         of the elevator to the safe position.
         retractArmAndDescend = new FTCButton(this, FTCButton.ButtonValue.GAMEPAD_2_X);
         asyncMoveArm = Threading.launchAsync(callableMoveArm);
-        sleep(200); // let the arm clear the shipping hub
+        sleep(500); // let the arm clear the shipping hub
         asyncMoveElevatorDown = Threading.launchAsync(callableMoveElevatorDown);
         */
         // Allow arm retraction and elevator descent even if the freight has not been delivered.
         FSM5.defineTransition(State.ELEVATOR_UP_AND_ARM_OUT, Event.GAMEPAD_2_X, State.ARM_RETRACTION_AND_ELEVATOR_DESCENT,
-                () -> Optional.of(Event.START_ARM_RETRACTION_AND_ELEVATOR_DESCENT)); // internal transition to common state
+                () -> {
+                    System.out.println("Event " + Event.GAMEPAD_2_X);
+                    System.out.println("Retract arm and lower elevator without delivering freight");
+                    return Optional.of(Event.START_ARM_RETRACTION_AND_ELEVATOR_DESCENT);
+                }); // internal transition to common state
 
         FSM5.defineTransition(State.ELEVATOR_UP_AND_ARM_OUT, Event.ALL_OTHER, State.ELEVATOR_UP_AND_ARM_OUT,
                 () -> {
@@ -188,7 +191,11 @@ public class FSM5Container {
                 });
 
         FSM5.defineTransition(State.GAMEPAD_2_B_PRESSED, Event.GAMEPAD_2_X, State.ARM_RETRACTION_AND_ELEVATOR_DESCENT,
-                () -> Optional.of(Event.START_ARM_RETRACTION_AND_ELEVATOR_DESCENT)); // internal transition to common state
+                () -> {
+                    System.out.println("Event " + Event.GAMEPAD_2_X);
+                    System.out.println("Freight delivery complete; retract arm and lower elevator");
+                    return Optional.of(Event.START_ARM_RETRACTION_AND_ELEVATOR_DESCENT);
+                }); // internal transition to common state
 
         FSM5.defineTransition(State.GAMEPAD_2_B_PRESSED, Event.ALL_OTHER, State.GAMEPAD_2_B_PRESSED,
                 () -> {
@@ -207,7 +214,7 @@ public class FSM5Container {
 
         // Note that the freight delivery arm retraction and the elevator descent may complete in either order.
         // ELEVATOR_DESCENT_COMPLETE is an external event triggered by thread completion.
-        FSM5.defineTransition(State.WAIT_FOR_ARM_RETRACTION_AND_ELEVATOR_DESCENT, Event.ELEVATOR_DESCENT_COMPLETE, State.ELEVATOR_DOWN,
+        FSM5.defineTransition(State.WAIT_FOR_ARM_RETRACTION_AND_ELEVATOR_DESCENT, Event.ELEVATOR_DESCENT_COMPLETE, State.ELEVATOR_SAFE_AFTER_DESCENT,
                 () -> {
                     System.out.println("Elevator is at the SAFE level");
                     System.out.println("Wait for the freight delivery arm retraction");
@@ -242,25 +249,25 @@ public class FSM5Container {
                 });
 
         // DELIVERY_ARM_RETRACTION_COMPLETE is an external event triggered by thread completion.
-        FSM5.defineTransition(State.ELEVATOR_DOWN, Event.DELIVERY_ARM_RETRACTION_COMPLETE, State.ELEVATOR_SAFE,
+        FSM5.defineTransition(State.ELEVATOR_SAFE_AFTER_DESCENT, Event.DELIVERY_ARM_RETRACTION_COMPLETE, State.ELEVATOR_SAFE,
                 () -> {
                     System.out.println("Delivery arm is retracted");
                     return Optional.empty();
                 });
 
-        FSM5.defineTransition(State.ELEVATOR_DOWN, Event.ALL_OTHER, State.ELEVATOR_DOWN,
+        FSM5.defineTransition(State.ELEVATOR_SAFE_AFTER_DESCENT, Event.ALL_OTHER, State.ELEVATOR_SAFE_AFTER_DESCENT,
                 () -> {
-                    System.out.println("Unsupported event, remaining at ELEVATOR_DOWN");
+                    System.out.println("Unsupported event, remaining at ELEVATOR_SAFE_AFTER_DESCENT");
                     return Optional.empty();
                 });
 
         // ***** STATE MACHINE DEFINITIONS ARE COMPLETE *****
-        //**TODO STOPPED HERE 12/29/2021
 
         System.out.println("Starting the state machine");
         FSM5.processEvent(Event.GAMEPAD_2_Y);
         System.out.println("New current state " + FSM5.getCurrentState());
 
+        // ELEVATOR_UP_TO_SAFE_COMPLETE is an external event triggered by thread completion.
         FSM5.processEvent(Event.ELEVATOR_ASCENT_TO_SAFE_COMPLETE);
         System.out.println("New current state " + FSM5.getCurrentState());
 
@@ -268,7 +275,40 @@ public class FSM5Container {
         FSM5.processEvent(Event.GAMEPAD_2_DPAD_UP);
         System.out.println("New current state " + FSM5.getCurrentState());
 
+        //## ELEVATOR_ASCENT_COMPLETE and DELIVERY_ARM_EXTENSION_COMPLETE
+        // can occur in either order.
+        // ELEVATOR_ASCENT_COMPLETE is an external event triggered by thread completion.
+        // Event.ELEVATOR_ASCENT_COMPLETE
+        FSM5.processEvent(Event.ELEVATOR_ASCENT_COMPLETE);
+        System.out.println("New current state " + FSM5.getCurrentState());
+
+        sleep(500);
+
+        // DELIVERY_ARM_EXTENSION_COMPLETE is an external event triggered by thread completion.
+        // Event.DELIVERY_ARM_EXTENSION_COMPLETE
+        FSM5.processEvent(Event.DELIVERY_ARM_EXTENSION_COMPLETE);
+        System.out.println("New current state " + FSM5.getCurrentState());
+
+        // Deliver freight.
+        FSM5.processEvent(Event.GAMEPAD_2_B);
+        System.out.println("New current state " + FSM5.getCurrentState());
+
+        // Start the retraction of the arm and the descent of the elevator.
+        FSM5.processEvent(Event.GAMEPAD_2_X);
+        System.out.println("New current state " + FSM5.getCurrentState());
+
+        // Note that the freight delivery arm retraction and the elevator descent may complete in either order.
+        // ELEVATOR_DESCENT_COMPLETE is an external event triggered by thread completion.
+        FSM5.processEvent(Event.DELIVERY_ARM_RETRACTION_COMPLETE);
+        System.out.println("New current state " + FSM5.getCurrentState());
+
+        sleep(500);
+
+        FSM5.processEvent(Event.ELEVATOR_DESCENT_COMPLETE);
+        System.out.println("New current state " + FSM5.getCurrentState());
+
         System.out.println("DONE");
+        System.out.println("Expected state: ELEVATOR_SAFE, actual state " + FSM5.getCurrentState());
     }
 
 }

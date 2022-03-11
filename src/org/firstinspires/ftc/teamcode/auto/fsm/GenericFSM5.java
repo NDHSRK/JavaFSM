@@ -64,7 +64,7 @@ public class GenericFSM5<S extends Enum<S>, E extends Enum<E>> {
 
         // If the user has not included the catch-all ALL_OTHER as
         // an Event enum value, set it null here.
-        E tempAllOtherEvent = null;
+        E tempAllOtherEvent;
         try {
             tempAllOtherEvent = E.valueOf(eventClass, ALL_OTHER);
         }

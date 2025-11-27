@@ -1,7 +1,6 @@
 package org.firstinspires.ftc.teamcode.auto.fsm;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 import static java.lang.Thread.sleep;
@@ -13,30 +12,31 @@ public class FSM6Container {
     }
 
     private enum Event {
-        GENERATE_NEXT_EVENT,
-        INTAKE_TOGGLE_BUTTON_PRESS, INTAKE_DONE,
-        PATTERN_SELECTION_GREEN_BUTTON_PRESS, PATTERN_SELECTION_PURPLE_BUTTON_PRESS,
-        PATTERN_CONFIRMATION_BUTTON_PRESS, PATTERN_CANCELLATION_BUTTON_PRESS,
-        ALL_OTHER //**TODO or DEFAULT
+        GET_NEXT_EVENT,
+        INTAKE_STARTED, INTAKE_DONE,
+        ALL_OTHER //**TODO -> DEFAULT
     }
 
     private final GenericFSM6<State, Event> FSM6 =
             new GenericFSM6<>(State.START, State.class, Event.class);
 
+    enum InProgress {START, INTAKE, SHOOTING, AIMING}
+
     // Simulate button values and other conditions.
     private enum IntakeToggle {OFF, ON}
 
     private IntakeToggle intakeToggle = IntakeToggle.OFF;
-    private boolean intakeToggleTap = true;
+    private boolean intakeToggleOn = true;
     private boolean revolverFull = false;
 
     // Pattern selection
-    private boolean patternSelectionGreenTap = false;
-    private boolean patternSelectionPurpleTap = false;
-    private boolean patternConfirmationTap = false;
-    private boolean patternCancellationTap = false;
+    private boolean patternSelectionGreenOn = false;
+    private boolean patternSelectionPurpleOn = false;
+    private boolean patternConfirmationOn = false;
+    private boolean patternCancellationOn = false;
 
     enum ArtifactColor {GREEN, PURPLE}
+
     private final List<ArtifactColor> artifactPattern = new ArrayList<>();
     public static final int MAX_ARTIFACTS_IN_REVOLVER = 3;
     private boolean customPatternTimerStarted = false;
@@ -45,11 +45,12 @@ public class FSM6Container {
     // checks button presses and conditions and generates events
     // for the DecodeTeleOpFSM.
 
-    public FSM6Container() {}
+    public FSM6Container() {
+    }
 
     public void testFSM6() {
-        FSM6.defineTransition(State.START, Event.GENERATE_NEXT_EVENT,
-                new ArrayList<>(Arrays.asList(FSM6.new Transition(State.START,
+        FSM6.defineTransition(State.START, Event.GET_NEXT_EVENT,
+                FSM6.new Transition(State.START,
                         // Guard condition
                         null,
                         // Action
@@ -57,78 +58,60 @@ public class FSM6Container {
                         // and conditions here or get the Event from
                         // the Monitor?
                         () -> {
-                            if (intakeToggleTap) {
-                                return Event.INTAKE_TOGGLE_BUTTON_PRESS;
+                            if (updateIntakeOn()) {
+                                return Event.INTAKE_STARTED;
                             }
-                            if (patternSelectionGreenTap) {
-                                return Event.PATTERN_SELECTION_GREEN_BUTTON_PRESS;
+                            if (updatePatternSelectionGreen()) {
+                                return Event.GET_NEXT_EVENT;
                             }
-                            if (patternSelectionPurpleTap) {
-                                return Event.PATTERN_SELECTION_PURPLE_BUTTON_PRESS;
+                            if (updatePatternSelectionPurple()) {
+                                return Event.GET_NEXT_EVENT;
                             }
-                            if (patternConfirmationTap) {
-                                return Event.PATTERN_CONFIRMATION_BUTTON_PRESS;
+                            if (updatePatternConfirmation()) {
+                                return Event.GET_NEXT_EVENT;
                             }
-                            if (patternCancellationTap) {
-                                return Event.PATTERN_CANCELLATION_BUTTON_PRESS;
+                            if (updatePatternCancellation()) {
+                                return Event.GET_NEXT_EVENT;
                             }
-                            return Event.ALL_OTHER; // default
-                        }))));
+                            return Event.GET_NEXT_EVENT;
+                        }));
 
-        // Test case to exercise the Finite State Machine FSM6.
-        FSM6.defineTransition(State.START, Event.INTAKE_TOGGLE_BUTTON_PRESS,
-                new ArrayList<>(Arrays.asList(FSM6.new Transition(State.INTAKE_IN_PROGRESS,
+        FSM6.defineTransition(State.START, Event.INTAKE_STARTED,
+                FSM6.new Transition(State.INTAKE_IN_PROGRESS,
                         // Guard condition
-                        () -> {
-                            System.out.println("Intake toggle " + intakeToggle + " revolverFull " + revolverFull);
-                            //**TODO Here you're getting the current toggle state
-                            // from the NWayToggle itself.
-                            return intakeToggle == IntakeToggle.OFF && !revolverFull;
-                        },
+                        null,
                         // Action
                         () -> {
-                            System.out.println("Set intake toggle to ON");
-                            intakeToggle = IntakeToggle.ON;
-                            System.out.println("Turn on intake servos; start IntakeMotion thread");
-                            //**TODO Need GENERATE_EVENT for State INTAKE_IN_PROGRESS
-                            System.out.println("Generate internal event CHECK_INTAKE_DONE");
-                            return Event.INTAKE_DONE;
-                        }))));
-
-        FSM6.defineTransition(State.START, Event.PATTERN_SELECTION_GREEN_BUTTON_PRESS,
-                new ArrayList<>(Arrays.asList(FSM6.new Transition(State.START,
-                // Guard condition
-                () -> {
-                    System.out.println("Artifacts in pattern " + artifactPattern.size());
-                    return artifactPattern.size() < MAX_ARTIFACTS_IN_REVOLVER;
-                },
-                // Action
-                () -> {
-                    if (!customPatternTimerStarted) {
-                        customPatternTimerStarted = true;
-                        System.out.println("Start custom pattern timer");
-                    }
-                    return Event.GENERATE_NEXT_EVENT;
-                }))));
-
-        /*
-        B.	Event  PATTERN_SELECTION_GREEN Button.update();
-1.	Transition START
-2.	Action pattern selection not full, add GREEN to pattern; if (!customPatternTimerStarted) start timer
-C.	 Event  PATTERN_SELECTION_PURPLE Button.update();
-1.	Transition START
-2.	Action pattern selection not full, add PURPLE to pattern; if (!customPatternTimerStarted) start timer
-D.	Event PATTERN_CONFIRMATION
-1.	Transition START
-2.	Action cancel timer
-E.	 Event PATTERN_CANCELLATION
-1.	Transition START
-2.	Action cancel timer, clear pattern
-
-         */
+                            return Event.GET_NEXT_EVENT;
+                        }
+                ));
 
         // Catch-all for all other events applied to this state.
         FSM6.defineTransition(State.START, FSM6Container.Event.ALL_OTHER, FSM6Container.State.START);
+
+        FSM6.defineTransition(State.INTAKE_IN_PROGRESS, Event.GET_NEXT_EVENT,
+                FSM6.new Transition(State.INTAKE_IN_PROGRESS,
+                        // Guard condition
+                        null,
+                        // Action
+                        () -> {
+                            if (updateIntakeOff()) {
+                                return Event.INTAKE_DONE;
+                            }
+                            if (updatePatternSelectionGreen()) {
+                                return Event.GET_NEXT_EVENT;
+                            }
+                            if (updatePatternSelectionPurple()) {
+                                return Event.GET_NEXT_EVENT;
+                            }
+                            if (updatePatternConfirmation()) {
+                                return Event.GET_NEXT_EVENT;
+                            }
+                            if (updatePatternCancellation()) {
+                                return Event.GET_NEXT_EVENT;
+                            }
+                            return Event.GET_NEXT_EVENT;
+                        }));
 
         //**TODO TEMP
         FSM6.defineTransition(State.INTAKE_IN_PROGRESS, FSM6Container.Event.INTAKE_DONE, FSM6Container.State.START);
@@ -137,12 +120,37 @@ E.	 Event PATTERN_CANCELLATION
         // ***** STATE MACHINE DEFINITIONS ARE COMPLETE *****
 
         System.out.println("Starting the state machine");
-        FSM6.processEvent(Event.INTAKE_TOGGLE_BUTTON_PRESS);
+        FSM6.processEvent(Event.GET_NEXT_EVENT);
         State newCurrentState = FSM6.getCurrentState();
         if (newCurrentState == null)
             System.out.println("New current state not supplied by action routine");
         else
-        System.out.println("New current state " + newCurrentState);
+            System.out.println("New current state " + newCurrentState);
+    }
+
+    private boolean updateIntakeOn() {
+        return intakeToggleOn;
+    }
+
+    private boolean updateIntakeOff() {
+        // Check future complete (revolver full) or toggle to OFF
+        return !intakeToggleOn;
+    }
+
+    private boolean updatePatternSelectionGreen() {
+        return patternSelectionGreenOn;
+    }
+
+    private boolean updatePatternSelectionPurple() {
+        return patternSelectionPurpleOn;
+    }
+
+    private boolean updatePatternConfirmation() {
+        return patternConfirmationOn;
+    }
+
+    private boolean updatePatternCancellation() {
+        return patternCancellationOn;
     }
 
 }

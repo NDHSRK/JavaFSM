@@ -51,18 +51,16 @@ public class GenericFSM6<S extends Enum<S>, E extends Enum<E>> {
 
     private final EnumMap<S, EnumMap<E, List<Transition>>> FSM;
     private S currentState;
-    private final Class<S> stateClass;
     private final Class<E> eventClass;
     private final E allOtherEvent; // special catch-all event; see usage below
 
     public GenericFSM6(S pInitialState, Class<S> pStateClass, Class<E> pEventClass) {
         currentState = pInitialState;
-        stateClass = pStateClass;
-        FSM = new EnumMap<>(stateClass);
+        FSM = new EnumMap<>(pStateClass);
         eventClass = pEventClass;
 
         //**TODO Purpose? If the user has not included the catch-all ALL_OTHER as
-        // an Event enum value, set it null here.
+        // an Event enum value, set it null here. Change to "DEFAULT".
         E tempAllOtherEvent;
         try {
             tempAllOtherEvent = E.valueOf(eventClass, ALL_OTHER);
@@ -80,6 +78,10 @@ public class GenericFSM6<S extends Enum<S>, E extends Enum<E>> {
     // action routines.
     public void defineTransition(S pSourceState, E pEvent, S pDestinationState) {
         defineTransition(pSourceState, pEvent, new ArrayList<>(Arrays.asList(new Transition(pDestinationState, null, null))));
+    }
+
+    public void defineTransition(S pSourceState, E pEvent, Transition pTransition) {
+        defineTransition(pSourceState, pEvent, new ArrayList<>(Arrays.asList(pTransition)));
     }
 
     // State transition that includes non-null guard conditions/

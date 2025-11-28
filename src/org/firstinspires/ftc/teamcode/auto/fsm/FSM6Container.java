@@ -27,7 +27,7 @@ public class FSM6Container {
 
     private IntakeToggle intakeToggle = IntakeToggle.OFF;
     private boolean intakeToggleOn = true;
-    private boolean revolverFull = false;
+    private int artifactsInRevolver = 0;
 
     // Pattern selection
     private boolean patternSelectionGreenOn = false;
@@ -95,7 +95,7 @@ public class FSM6Container {
                         null,
                         // Action
                         () -> {
-                            if (updateIntakeOff()) {
+                            if (revolverIsFull() || updateIntakeOff()) {
                                 return Event.INTAKE_DONE;
                             }
                             if (updatePatternSelectionGreen()) {
@@ -112,6 +112,20 @@ public class FSM6Container {
                             }
                             return Event.GET_NEXT_EVENT;
                         }));
+
+        //**TODO What to do about the pattern timer?
+        /*
+               // Custom pattern selection.
+        // The driver must select 3 colors within the timeout value.
+        // If customPatternTimerStarted is true and the timer has expired
+        // simply reset the current pattern by artifactPattern.clear()
+        // and set the customPatternTimerStarted to false.
+        if (customPatternTimerStarted && customPatternTimer.milliseconds() >= PATTERN_TIMEOUT) {
+            artifactPattern.clear();
+            customPatternTimerStarted = false;
+            RobotLogCommon.d(TAG, "Pattern selection timed out");
+        }
+         */
 
         //**TODO TEMP
         FSM6.defineTransition(State.INTAKE_IN_PROGRESS, FSM6Container.Event.INTAKE_DONE, FSM6Container.State.START);
@@ -130,6 +144,10 @@ public class FSM6Container {
 
     private boolean updateIntakeOn() {
         return intakeToggleOn;
+    }
+
+    private boolean revolverIsFull() {
+        return artifactsInRevolver == MAX_ARTIFACTS_IN_REVOLVER;
     }
 
     private boolean updateIntakeOff() {

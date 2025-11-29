@@ -7,20 +7,27 @@ import static java.lang.Thread.sleep;
 
 public class FSM6Container {
 
-    private enum State {
-        START, INTAKE_IN_PROGRESS, INTAKE_COMPLETE
+    private enum DecodeTeleOpState {
+        START,
+        INTAKE_IN_PROGRESS, INTAKE_COMPLETE,
+        FINISH
     }
 
-    private enum Event {
+    private enum DecodeTeleOpEvent {
         GET_NEXT_EVENT,
         INTAKE_STARTED, INTAKE_DONE,
-        ALL_OTHER //**TODO -> DEFAULT
+        FINISH, ALL_OTHER //**TODO -> DEFAULT
     }
 
-    private final GenericFSM6<State, Event> FSM6 =
-            new GenericFSM6<>(State.START, State.class, Event.class);
+    private final GenericFSM6<DecodeTeleOpState, DecodeTeleOpEvent> FSM6 =
+            new GenericFSM6<>(DecodeTeleOpState.START, DecodeTeleOpState.class, DecodeTeleOpEvent.class);
 
-    enum InProgress {START, INTAKE, SHOOTING, AIMING}
+    enum PatternTimerState {PATTERN_TIMER_NOT_RUNNING, PATTERN_TIMER_RUNNING}
+    enum PatternTimerEvent {GET_NEXT_EVENT, START_PATTERN_TIMER, CHECK_PATTERN_TIMER_EXPIRED,
+    ALL_OTHER}
+
+    private final GenericFSM6<PatternTimerState, PatternTimerEvent> patternTimerFSM =
+            new GenericFSM6<>(PatternTimerState.PATTERN_TIMER_NOT_RUNNING, PatternTimerState.class, PatternTimerEvent.class);
 
     // Simulate button values and other conditions.
     private enum IntakeToggle {OFF, ON}
@@ -41,76 +48,73 @@ public class FSM6Container {
     public static final int MAX_ARTIFACTS_IN_REVOLVER = 3;
     private boolean customPatternTimerStarted = false;
 
-    //**TODO You're going to need a Monitor state machine that
-    // checks button presses and conditions and generates events
-    // for the DecodeTeleOpFSM.
-
     public FSM6Container() {
     }
 
     public void testFSM6() {
-        FSM6.defineTransition(State.START, Event.GET_NEXT_EVENT,
-                FSM6.new Transition(State.START,
+        FSM6.defineTransition(DecodeTeleOpState.START, DecodeTeleOpEvent.GET_NEXT_EVENT,
+                FSM6.new Transition(DecodeTeleOpState.START,
                         // Guard condition
                         null,
                         // Action
                         //**TODO Do you want to look at the buttons
                         // and conditions here or get the Event from
-                        // the Monitor?
+                        // a Monitor? A: it's clearer to look at the
+                        // buttons and conditions here.
                         () -> {
                             if (updateIntakeOn()) {
-                                return Event.INTAKE_STARTED;
+                                return DecodeTeleOpEvent.INTAKE_STARTED;
                             }
                             if (updatePatternSelectionGreen()) {
-                                return Event.GET_NEXT_EVENT;
+                                return DecodeTeleOpEvent.GET_NEXT_EVENT;
                             }
                             if (updatePatternSelectionPurple()) {
-                                return Event.GET_NEXT_EVENT;
+                                return DecodeTeleOpEvent.GET_NEXT_EVENT;
                             }
                             if (updatePatternConfirmation()) {
-                                return Event.GET_NEXT_EVENT;
+                                return DecodeTeleOpEvent.GET_NEXT_EVENT;
                             }
                             if (updatePatternCancellation()) {
-                                return Event.GET_NEXT_EVENT;
+                                return DecodeTeleOpEvent.GET_NEXT_EVENT;
                             }
-                            return Event.GET_NEXT_EVENT;
+                            return DecodeTeleOpEvent.GET_NEXT_EVENT;
                         }));
 
-        FSM6.defineTransition(State.START, Event.INTAKE_STARTED,
-                FSM6.new Transition(State.INTAKE_IN_PROGRESS,
+        FSM6.defineTransition(DecodeTeleOpState.START, DecodeTeleOpEvent.INTAKE_STARTED,
+                FSM6.new Transition(DecodeTeleOpState.INTAKE_IN_PROGRESS,
                         // Guard condition
                         null,
                         // Action
                         () -> {
-                            return Event.GET_NEXT_EVENT;
+                            return DecodeTeleOpEvent.GET_NEXT_EVENT;
                         }
                 ));
 
         // Catch-all for all other events applied to this state.
-        FSM6.defineTransition(State.START, FSM6Container.Event.ALL_OTHER, FSM6Container.State.START);
+        FSM6.defineTransition(DecodeTeleOpState.START, DecodeTeleOpEvent.ALL_OTHER, DecodeTeleOpState.START);
 
-        FSM6.defineTransition(State.INTAKE_IN_PROGRESS, Event.GET_NEXT_EVENT,
-                FSM6.new Transition(State.INTAKE_IN_PROGRESS,
+        FSM6.defineTransition(DecodeTeleOpState.INTAKE_IN_PROGRESS, DecodeTeleOpEvent.GET_NEXT_EVENT,
+                FSM6.new Transition(DecodeTeleOpState.INTAKE_IN_PROGRESS,
                         // Guard condition
                         null,
                         // Action
                         () -> {
                             if (revolverIsFull() || updateIntakeOff()) {
-                                return Event.INTAKE_DONE;
+                                return DecodeTeleOpEvent.INTAKE_DONE;
                             }
                             if (updatePatternSelectionGreen()) {
-                                return Event.GET_NEXT_EVENT;
+                                return DecodeTeleOpEvent.GET_NEXT_EVENT;
                             }
                             if (updatePatternSelectionPurple()) {
-                                return Event.GET_NEXT_EVENT;
+                                return DecodeTeleOpEvent.GET_NEXT_EVENT;
                             }
                             if (updatePatternConfirmation()) {
-                                return Event.GET_NEXT_EVENT;
+                                return DecodeTeleOpEvent.GET_NEXT_EVENT;
                             }
                             if (updatePatternCancellation()) {
-                                return Event.GET_NEXT_EVENT;
+                                return DecodeTeleOpEvent.GET_NEXT_EVENT;
                             }
-                            return Event.GET_NEXT_EVENT;
+                            return DecodeTeleOpEvent.GET_NEXT_EVENT;
                         }));
 
         //**TODO What to do about the pattern timer?
@@ -128,15 +132,17 @@ public class FSM6Container {
          */
 
         //**TODO TEMP
-        FSM6.defineTransition(State.INTAKE_IN_PROGRESS, FSM6Container.Event.INTAKE_DONE, FSM6Container.State.START);
+        FSM6.defineTransition(DecodeTeleOpState.INTAKE_IN_PROGRESS, DecodeTeleOpEvent.INTAKE_DONE, DecodeTeleOpState.START);
 
 
         // ***** STATE MACHINE DEFINITIONS ARE COMPLETE *****
 
         System.out.println("Starting the state machine");
-        FSM6.processEvent(Event.GET_NEXT_EVENT);
-        State newCurrentState = FSM6.getCurrentState();
+        FSM6.processEvent(DecodeTeleOpEvent.GET_NEXT_EVENT);
+        //**TODO Should processEvent return the next state?
+        DecodeTeleOpState newCurrentState = FSM6.getCurrentState();
         if (newCurrentState == null)
+            //**TODO comment incorrect: action routines return an event.
             System.out.println("New current state not supplied by action routine");
         else
             System.out.println("New current state " + newCurrentState);

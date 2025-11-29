@@ -23,6 +23,9 @@
 
 package org.firstinspires.ftc.teamcode.auto.fsm;
 
+import org.firstinspires.ftc.ftcdevcommon.Pair;
+import org.firstinspires.ftc.ftcdevcommon.platform.intellij.RobotLogCommon;
+
 import java.util.*;
 import java.util.function.Supplier;
 
@@ -30,7 +33,6 @@ import java.util.function.Supplier;
 public class GenericFSM6<S extends Enum<S>, E extends Enum<E>> {
 
     private static final String TAG = GenericFSM6.class.getSimpleName();
-    public static final String ALL_OTHER = "ALL_OTHER";
 
     // The FSM is an EnumMap whose key is the current state (S); the
     // associated value is a second EnumMap<E, List<Transition>>.
@@ -52,23 +54,11 @@ public class GenericFSM6<S extends Enum<S>, E extends Enum<E>> {
     private final EnumMap<S, EnumMap<E, List<Transition>>> FSM;
     private S currentState;
     private final Class<E> eventClass;
-    private final E allOtherEvent; // special catch-all event; see usage below
 
     public GenericFSM6(S pInitialState, Class<S> pStateClass, Class<E> pEventClass) {
         currentState = pInitialState;
         FSM = new EnumMap<>(pStateClass);
         eventClass = pEventClass;
-
-        //**TODO Purpose? If the user has not included the catch-all ALL_OTHER as
-        // an Event enum value, set it null here. Change to "DEFAULT".
-        E tempAllOtherEvent;
-        try {
-            tempAllOtherEvent = E.valueOf(eventClass, ALL_OTHER);
-        }
-        catch (IllegalArgumentException iex) {
-            tempAllOtherEvent = null;
-        }
-        allOtherEvent = tempAllOtherEvent;
     }
 
     // Define the transitions in the state machine by calling either of
@@ -123,12 +113,16 @@ public class GenericFSM6<S extends Enum<S>, E extends Enum<E>> {
 
     // Move the state machinery in response to an event. Look at
     // the list of possible transitions, each of which may have
-    // a guard condition and/or and action routine.
-    public void processEvent(E pEvent) {
+    // a guard condition and/or and action routine. Returns the
+    // next state, which may be null if no transition is defined
+    // for the current state and the argument pEvent, and the
+    // next event, which may be null if not specified by the
+    // action routine..
+    public Pair<S, E> processEvent(E pEvent) {
         List<Transition> transitions = getTransitions(pEvent);
-        S nextState;
+        S nextState = null;
         Supplier<Boolean> guard;
-        E nextEvent;
+        E nextEvent = null;
         for (Transition oneTransition : transitions) {
             guard = oneTransition.guardCondition;
             if (guard != null && !guard.get()) {
@@ -138,7 +132,7 @@ public class GenericFSM6<S extends Enum<S>, E extends Enum<E>> {
 
             // Got a valid transition.
             nextState = oneTransition.getNextState();
-            System.out.println(TAG + " " + "FSM current state " + currentState.toString() + ", event " +
+            RobotLogCommon.d(TAG, "FSM current state " + currentState.toString() + ", event " +
                     pEvent + ", next state " + nextState.toString());
 
             currentState = nextState;
@@ -147,16 +141,15 @@ public class GenericFSM6<S extends Enum<S>, E extends Enum<E>> {
                 break;
             }
 
-            //** RobotLogCommon.d(TAG, "Executing internal transition based on event " + nextEvent.get());
-            // call self
+            // For an internal transition return a non-null event
+            // from the non-null action routine.
             nextEvent = oneTransition.executeActionRoutine();
-            if (nextEvent != null) {
-                processEvent(nextEvent);
-            }
         }
+
+        return Pair.create(nextState, nextEvent);
     }
 
-    // Get the transition associated with an event.
+    // Get the transition(s) associated with an event.
     private List<Transition> getTransitions(E pEvent) {
         // Use the current state as a key into the FSM.
         // The value of the first lookup is a map of events and state
@@ -172,17 +165,11 @@ public class GenericFSM6<S extends Enum<S>, E extends Enum<E>> {
 
         // If the current state has a transition for the current
         // event, return the Transition now.
-        if (transitionMap.containsKey(pEvent))
-            return transitionMap.get(pEvent);
-
-        // Otherwise check if the special catch-all event is present
-        // and, if so, use its transition.
-        Set<E> eventKeySet = transitionMap.keySet();
-        if (allOtherEvent == null || !eventKeySet.contains(allOtherEvent))
+        if (!transitionMap.containsKey(pEvent))
             throw new IllegalStateException("FSM: event "
                     + pEvent.toString() + " not present for state " + currentState);
 
-        return transitionMap.get(allOtherEvent);
+        return transitionMap.get(pEvent);
     }
 
     // A Transition consists of a next state (S) and an Optional

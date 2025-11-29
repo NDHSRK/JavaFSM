@@ -1,11 +1,18 @@
 package org.firstinspires.ftc.teamcode.auto.fsm;
 
+import org.firstinspires.ftc.ftcdevcommon.AutonomousRobotException;
+import org.firstinspires.ftc.ftcdevcommon.Pair;
+import org.firstinspires.ftc.ftcdevcommon.platform.intellij.RobotLogCommon;
+import org.firstinspires.ftc.ftcdevcommon.platform.intellij.WorkingDirectory;
+import org.firstinspires.ftc.teamcode.auto.RobotConstants;
+
 import java.util.ArrayList;
 import java.util.List;
 
 import static java.lang.Thread.sleep;
 
 public class FSM6Container {
+    private static final String TAG = FSM6Container.class.getSimpleName();
 
     private enum DecodeTeleOpState {
         START,
@@ -34,7 +41,7 @@ public class FSM6Container {
 
     private IntakeToggle intakeToggle = IntakeToggle.OFF;
     private boolean intakeToggleOn = true;
-    private int artifactsInRevolver = 0;
+    private int artifactsInRevolver = MAX_ARTIFACTS_IN_REVOLVER;
 
     // Pattern selection
     private boolean patternSelectionGreenOn = false;
@@ -52,6 +59,10 @@ public class FSM6Container {
     }
 
     public void testFSM6() {
+        String logDirPath = WorkingDirectory.getWorkingDirectory() + RobotConstants.logDir;
+        RobotLogCommon.OpenStatus openStatus = RobotLogCommon.initialize(RobotLogCommon.LogIdentifier.AUTO_LOG,
+                logDirPath);
+
         FSM6.defineTransition(DecodeTeleOpState.START, DecodeTeleOpEvent.GET_NEXT_EVENT,
                 FSM6.new Transition(DecodeTeleOpState.START,
                         // Guard condition
@@ -90,7 +101,7 @@ public class FSM6Container {
                         }
                 ));
 
-        // Catch-all for all other events applied to this state.
+        //**TODO This will return a null next state Catch-all for all other events applied to this state.
         FSM6.defineTransition(DecodeTeleOpState.START, DecodeTeleOpEvent.ALL_OTHER, DecodeTeleOpState.START);
 
         FSM6.defineTransition(DecodeTeleOpState.INTAKE_IN_PROGRESS, DecodeTeleOpEvent.GET_NEXT_EVENT,
@@ -137,15 +148,69 @@ public class FSM6Container {
 
         // ***** STATE MACHINE DEFINITIONS ARE COMPLETE *****
 
-        System.out.println("Starting the state machine");
-        FSM6.processEvent(DecodeTeleOpEvent.GET_NEXT_EVENT);
-        //**TODO Should processEvent return the next state?
-        DecodeTeleOpState newCurrentState = FSM6.getCurrentState();
-        if (newCurrentState == null)
-            //**TODO comment incorrect: action routines return an event.
-            System.out.println("New current state not supplied by action routine");
-        else
-            System.out.println("New current state " + newCurrentState);
+        //**TODO Need a loop that ends when ...
+        // INTAKE_IN_PROGRESS loops until the revolver is full or the
+        // driver toggles intake to OFF; at that point intake is complete.
+        // Intake can be restarted if the revolver is *not* full [where is
+        // this tested in the FSM?].
+        //**TODO STOPPED HERE 11/29/25 15:45 ...
+
+        System.out.println("Starting the state machine at state " + FSM6.getCurrentState());
+        RobotLogCommon.d(TAG, "Starting the state machine at state " + FSM6.getCurrentState());
+        Pair<DecodeTeleOpState, DecodeTeleOpEvent> processEventOutput = FSM6.processEvent(DecodeTeleOpEvent.GET_NEXT_EVENT);
+        if (processEventOutput.first == null)
+            throw new AutonomousRobotException(TAG, "No transition for state " + FSM6.getCurrentState() + " and event " + DecodeTeleOpEvent.GET_NEXT_EVENT);
+        else {
+            RobotLogCommon.d(TAG, "New current state " + processEventOutput.first);
+            if (processEventOutput.second == null)
+                RobotLogCommon.d(TAG, "No internal event supplied by an action routine");
+            else
+                RobotLogCommon.d(TAG, "Internal event " + processEventOutput.second + " supplied by an action routine");
+        }
+
+        Pair<DecodeTeleOpState, DecodeTeleOpEvent> processEvent2Output = null;
+        if (processEventOutput.second != null) {
+            processEvent2Output = FSM6.processEvent(processEventOutput.second);
+            if (processEvent2Output.first == null)
+                throw new AutonomousRobotException(TAG, "No transition for state " + FSM6.getCurrentState() + " and event " + processEventOutput.second);
+            else {
+                RobotLogCommon.d(TAG, "New current state " + processEvent2Output.first);
+                if (processEvent2Output.second == null)
+                    RobotLogCommon.d(TAG, "No internal event supplied by an action routine");
+                else
+                    RobotLogCommon.d(TAG, "Internal event " + processEvent2Output.second + " supplied by an action routine");
+            }
+        }
+
+        Pair<DecodeTeleOpState, DecodeTeleOpEvent> processEvent3Output = null;
+        if (processEvent2Output.second != null) {
+            processEvent3Output = FSM6.processEvent(processEvent2Output.second);
+            if (processEvent3Output.first == null)
+                throw new AutonomousRobotException(TAG, "No transition for state " + FSM6.getCurrentState() + " and event " + processEventOutput.second);
+            else {
+                RobotLogCommon.d(TAG, "New current state " + processEvent3Output.first);
+                if (processEvent3Output.second == null)
+                    RobotLogCommon.d(TAG, "No internal event supplied by an action routine");
+                else
+                    RobotLogCommon.d(TAG, "Internal event " + processEvent3Output.second + " supplied by an action routine");
+            }
+        }
+
+        Pair<DecodeTeleOpState, DecodeTeleOpEvent> processEvent4Output = null;
+        if (processEvent3Output.second != null) {
+            processEvent4Output = FSM6.processEvent(processEvent3Output.second);
+            if (processEvent4Output.first == null)
+                throw new AutonomousRobotException(TAG, "No transition for state " + FSM6.getCurrentState() + " and event " + processEventOutput.second);
+            else {
+                RobotLogCommon.d(TAG, "New current state " + processEvent4Output.first);
+                if (processEvent4Output.second == null)
+                    RobotLogCommon.d(TAG, "No internal event supplied by an action routine");
+                else
+                    RobotLogCommon.d(TAG, "Internal event " + processEvent4Output.second + " supplied by an action routine");
+            }
+        }
+
+        RobotLogCommon.closeLog();
     }
 
     private boolean updateIntakeOn() {

@@ -4,9 +4,14 @@ import org.firstinspires.ftc.ftcdevcommon.AutonomousRobotException;
 import org.firstinspires.ftc.ftcdevcommon.Pair;
 import org.firstinspires.ftc.ftcdevcommon.platform.intellij.RobotLogCommon;
 import org.firstinspires.ftc.ftcdevcommon.platform.intellij.WorkingDirectory;
+import org.firstinspires.ftc.teamcode.auto.FTCButton;
+import org.firstinspires.ftc.teamcode.auto.FTCToggleButtonNWay;
 import org.firstinspires.ftc.teamcode.auto.RobotConstants;
+import org.firstinspires.ftc.teamcode.auto.RobotConstantsDecode;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.EnumSet;
 import java.util.List;
 
 import static java.lang.Thread.sleep;
@@ -21,33 +26,36 @@ public class FSM6Container {
     }
 
     private enum DecodeTeleOpEvent {
-        GET_NEXT_EVENT,
+        OPMODE_INACTIVE, GET_NEXT_EVENT,
         INTAKE_STARTED, INTAKE_DONE,
-        FINISH, ALL_OTHER //**TODO -> DEFAULT
+        FINISH
     }
 
     private final GenericFSM6<DecodeTeleOpState, DecodeTeleOpEvent> FSM6 =
             new GenericFSM6<>(DecodeTeleOpState.START, DecodeTeleOpState.class, DecodeTeleOpEvent.class);
 
     enum PatternTimerState {PATTERN_TIMER_NOT_RUNNING, PATTERN_TIMER_RUNNING}
-    enum PatternTimerEvent {GET_NEXT_EVENT, START_PATTERN_TIMER, CHECK_PATTERN_TIMER_EXPIRED,
-    ALL_OTHER}
+
+    enum PatternTimerEvent {
+        GET_NEXT_EVENT, START_PATTERN_TIMER, CHECK_PATTERN_TIMER_EXPIRED,
+        ALL_OTHER
+    }
 
     private final GenericFSM6<PatternTimerState, PatternTimerEvent> patternTimerFSM =
             new GenericFSM6<>(PatternTimerState.PATTERN_TIMER_NOT_RUNNING, PatternTimerState.class, PatternTimerEvent.class);
 
     // Simulate button values and other conditions.
-    private enum IntakeToggle {OFF, ON}
+    private enum IntakeState {OFF, ON}
 
-    private IntakeToggle intakeToggle = IntakeToggle.OFF;
+    private final FTCToggleButtonNWay<IntakeState> intakeToggleButton;
     private boolean intakeToggleOn = true;
     private int artifactsInRevolver = MAX_ARTIFACTS_IN_REVOLVER;
 
     // Pattern selection
-    private boolean patternSelectionGreenOn = false;
-    private boolean patternSelectionPurpleOn = false;
-    private boolean patternConfirmationOn = false;
-    private boolean patternCancellationOn = false;
+    private FTCButton greenSelectionButton;
+    private FTCButton purpleSelectionButton;
+    private FTCButton patternConfirmationButton;
+    private FTCButton patternCancellationButton;
 
     enum ArtifactColor {GREEN, PURPLE}
 
@@ -56,6 +64,12 @@ public class FSM6Container {
     private boolean customPatternTimerStarted = false;
 
     public FSM6Container() {
+        intakeToggleButton = new FTCToggleButtonNWay<>(() -> false, EnumSet.allOf(IntakeState.class));
+
+        greenSelectionButton = new FTCButton(() -> false);
+        purpleSelectionButton = new FTCButton(() -> false);
+        patternConfirmationButton = new FTCButton(() -> false);
+        patternCancellationButton = new FTCButton(() -> false);
     }
 
     public void testFSM6() {
@@ -63,46 +77,95 @@ public class FSM6Container {
         RobotLogCommon.OpenStatus openStatus = RobotLogCommon.initialize(RobotLogCommon.LogIdentifier.AUTO_LOG,
                 logDirPath);
 
-        FSM6.defineTransition(DecodeTeleOpState.START, DecodeTeleOpEvent.GET_NEXT_EVENT,
-                FSM6.new Transition(DecodeTeleOpState.START,
-                        // Guard condition
-                        null,
-                        // Action
-                        //**TODO Do you want to look at the buttons
-                        // and conditions here or get the Event from
-                        // a Monitor? A: it's clearer to look at the
-                        // buttons and conditions here.
-                        () -> {
-                            if (updateIntakeOn()) {
-                                return DecodeTeleOpEvent.INTAKE_STARTED;
-                            }
-                            if (updatePatternSelectionGreen()) {
-                                return DecodeTeleOpEvent.GET_NEXT_EVENT;
-                            }
-                            if (updatePatternSelectionPurple()) {
-                                return DecodeTeleOpEvent.GET_NEXT_EVENT;
-                            }
-                            if (updatePatternConfirmation()) {
-                                return DecodeTeleOpEvent.GET_NEXT_EVENT;
-                            }
-                            if (updatePatternCancellation()) {
-                                return DecodeTeleOpEvent.GET_NEXT_EVENT;
-                            }
-                            return DecodeTeleOpEvent.GET_NEXT_EVENT;
-                        }));
+        //**TODO Guard condition methods call [button].update() and
+        // return true or false for presence of the condition of interest.
+        FSM6.defineTransition(DecodeTeleOpState.START, DecodeTeleOpEvent.OPMODE_INACTIVE, DecodeTeleOpState.FINISH);
 
-        FSM6.defineTransition(DecodeTeleOpState.START, DecodeTeleOpEvent.INTAKE_STARTED,
+        FSM6.defineTransition(DecodeTeleOpState.START, DecodeTeleOpEvent.GET_NEXT_EVENT, new ArrayList<>(Arrays.asList(
                 FSM6.new Transition(DecodeTeleOpState.INTAKE_IN_PROGRESS,
                         // Guard condition
+                        () -> {
+                            intakeToggleButton.update();
+                            if (!intakeToggleButton.is(FTCButton.State.TAP) || revolverIsFull())
+                                return false;
+                            return true;
+                        },
+                        // Action
+                        () -> {
+                            intakeToggleOnAction();
+                            return DecodeTeleOpEvent.GET_NEXT_EVENT;
+                        }
+                ),
+                FSM6.new Transition(DecodeTeleOpState.START,
+                        // Guard condition
+                        () -> {
+                            greenSelectionButton.update();
+                            if (!greenSelectionButton.is(FTCButton.State.TAP))
+                                return false;
+                            return true;
+                        },
+                        // Action
+                        //**TODO selectionButtonAction will move the patternSelectionFSM.
+                        () -> {
+                            selectionButtonAction(RobotConstantsDecode.ArtifactColor.GREEN);
+                            return DecodeTeleOpEvent.GET_NEXT_EVENT;
+                        }
+                ),
+                FSM6.new Transition(DecodeTeleOpState.START,
+                        // Guard condition
+                        () -> {
+                            purpleSelectionButton.update();
+                            if (!purpleSelectionButton.is(FTCButton.State.TAP))
+                                return false;
+                            return true;
+                        },
+                        // Action
+                        //**TODO selectionButtonAction will move the patternSelectionFSM.
+                        () -> {
+                            selectionButtonAction(RobotConstantsDecode.ArtifactColor.PURPLE);
+                            return DecodeTeleOpEvent.GET_NEXT_EVENT;
+                        }
+                ),
+                FSM6.new Transition(DecodeTeleOpState.START,
+                        // Guard condition
+                        () -> {
+                            patternConfirmationButton.update();
+                            if (!patternConfirmationButton.is(FTCButton.State.TAP))
+                                return false;
+                            return true;
+                        },
+                        // Action
+                        //**TODO patternConfirmationButtonAction will move the patternSelectionFSM.
+                        () -> {
+                            patternConfirmationButtonAction();
+                            return DecodeTeleOpEvent.GET_NEXT_EVENT;
+                        }
+                ),
+                FSM6.new Transition(DecodeTeleOpState.START,
+                        // Guard condition
+                        () -> {
+                            patternCancellationButton.update();
+                            if (!patternCancellationButton.is(FTCButton.State.TAP))
+                                return false;
+                            return true;
+                        },
+                        // Action
+                        //**TODO cancellationButtonAction will move the patternSelectionFSM.
+                        () -> {
+                            patternCancellationButtonAction();
+                            return DecodeTeleOpEvent.GET_NEXT_EVENT;
+                        }
+                ),
+                // Default
+                FSM6.new Transition(DecodeTeleOpState.START,
                         null,
                         // Action
                         () -> {
                             return DecodeTeleOpEvent.GET_NEXT_EVENT;
                         }
-                ));
+                ))));
 
-        //**TODO This will return a null next state Catch-all for all other events applied to this state.
-        FSM6.defineTransition(DecodeTeleOpState.START, DecodeTeleOpEvent.ALL_OTHER, DecodeTeleOpState.START);
+        FSM6.defineTransition(DecodeTeleOpState.INTAKE_IN_PROGRESS, DecodeTeleOpEvent.OPMODE_INACTIVE, DecodeTeleOpState.FINISH);
 
         FSM6.defineTransition(DecodeTeleOpState.INTAKE_IN_PROGRESS, DecodeTeleOpEvent.GET_NEXT_EVENT,
                 FSM6.new Transition(DecodeTeleOpState.INTAKE_IN_PROGRESS,
@@ -110,37 +173,11 @@ public class FSM6Container {
                         null,
                         // Action
                         () -> {
-                            if (revolverIsFull() || updateIntakeOff()) {
-                                return DecodeTeleOpEvent.INTAKE_DONE;
-                            }
-                            if (updatePatternSelectionGreen()) {
-                                return DecodeTeleOpEvent.GET_NEXT_EVENT;
-                            }
-                            if (updatePatternSelectionPurple()) {
-                                return DecodeTeleOpEvent.GET_NEXT_EVENT;
-                            }
-                            if (updatePatternConfirmation()) {
-                                return DecodeTeleOpEvent.GET_NEXT_EVENT;
-                            }
-                            if (updatePatternCancellation()) {
-                                return DecodeTeleOpEvent.GET_NEXT_EVENT;
-                            }
                             return DecodeTeleOpEvent.GET_NEXT_EVENT;
                         }));
 
         //**TODO What to do about the pattern timer?
-        /*
-               // Custom pattern selection.
-        // The driver must select 3 colors within the timeout value.
-        // If customPatternTimerStarted is true and the timer has expired
-        // simply reset the current pattern by artifactPattern.clear()
-        // and set the customPatternTimerStarted to false.
-        if (customPatternTimerStarted && customPatternTimer.milliseconds() >= PATTERN_TIMEOUT) {
-            artifactPattern.clear();
-            customPatternTimerStarted = false;
-            RobotLogCommon.d(TAG, "Pattern selection timed out");
-        }
-         */
+
 
         //**TODO TEMP
         FSM6.defineTransition(DecodeTeleOpState.INTAKE_IN_PROGRESS, DecodeTeleOpEvent.INTAKE_DONE, DecodeTeleOpState.START);
@@ -148,12 +185,11 @@ public class FSM6Container {
 
         // ***** STATE MACHINE DEFINITIONS ARE COMPLETE *****
 
-        //**TODO Need a loop that ends when ...
-        // INTAKE_IN_PROGRESS loops until the revolver is full or the
-        // driver toggles intake to OFF; at that point intake is complete.
-        // Intake can be restarted if the revolver is *not* full [where is
+        //**TODO No need for a loop but do need to handle an
+        // OPMDDE_INACTIVE event throughout the FSM.
+
+        //**TODO Intake can be restarted if the revolver is *not* full [where is
         // this tested in the FSM?].
-        //**TODO STOPPED HERE 11/29/25 15:45 ...
 
         System.out.println("Starting the state machine at state " + FSM6.getCurrentState());
         RobotLogCommon.d(TAG, "Starting the state machine at state " + FSM6.getCurrentState());
@@ -213,33 +249,31 @@ public class FSM6Container {
         RobotLogCommon.closeLog();
     }
 
-    private boolean updateIntakeOn() {
-        return intakeToggleOn;
-    }
-
     private boolean revolverIsFull() {
         return artifactsInRevolver == MAX_ARTIFACTS_IN_REVOLVER;
     }
 
-    private boolean updateIntakeOff() {
-        // Check future complete (revolver full) or toggle to OFF
-        return !intakeToggleOn;
+    private void intakeToggleOnAction() {
+        //**TODO intakeToggleOnAction
     }
 
-    private boolean updatePatternSelectionGreen() {
-        return patternSelectionGreenOn;
+    private void intakeToggleOffAction() {
+        //**TODO intakeToggleOffAction
     }
 
-    private boolean updatePatternSelectionPurple() {
-        return patternSelectionPurpleOn;
+    private void patternConfirmationButtonAction() {
+        //**TODO patternConfirmationButtonAction
     }
 
-    private boolean updatePatternConfirmation() {
-        return patternConfirmationOn;
+    private void patternCancellationButtonAction() {
+        //**TODO patternCancellationButtonAction
     }
 
-    private boolean updatePatternCancellation() {
-        return patternCancellationOn;
+
+    private void selectionButtonAction(RobotConstantsDecode.ArtifactColor pColor) {
+//**TODO Embed the logic for custom pattern selection in the patternSelectionFSM.
     }
+
+    ;
 
 }

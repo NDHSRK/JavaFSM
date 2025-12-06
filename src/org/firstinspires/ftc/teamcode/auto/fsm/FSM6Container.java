@@ -47,7 +47,7 @@ public class FSM6Container {
 
     private final FTCToggleButtonNWay<IntakeState> intakeToggleButton;
     private boolean intakeToggleOn = true;
-    private int artifactsInRevolver = MAX_ARTIFACTS_IN_REVOLVER;
+    private int artifactsInRevolver = MAX_ARTIFACTS_IN_REVOLVER - 1;
 
     // Pattern selection
     private FTCButton greenSelectionButton;
@@ -58,11 +58,11 @@ public class FSM6Container {
     enum ArtifactColor {GREEN, PURPLE}
 
     private final List<ArtifactColor> artifactPattern = new ArrayList<>();
-    public static final int MAX_ARTIFACTS_IN_REVOLVER = 3; //**TODO command line?
+    public static final int MAX_ARTIFACTS_IN_REVOLVER = 2; //**TODO command line?
     private boolean customPatternTimerStarted = false;
 
     public FSM6Container() {
-        intakeToggleButton = new FTCToggleButtonNWay<>(() -> false, EnumSet.allOf(IntakeState.class));
+        intakeToggleButton = new FTCToggleButtonNWay<>(() -> true, EnumSet.allOf(IntakeState.class));
         greenSelectionButton = new FTCButton(() -> false);
         purpleSelectionButton = new FTCButton(() -> false);
         patternConfirmationButton = new FTCButton(() -> false);
@@ -78,14 +78,20 @@ public class FSM6Container {
         // return true or false for presence of the condition of interest.
         FSM6.defineTransition(DecodeTeleOpState.START, DecodeTeleOpEvent.OPMODE_INACTIVE, DecodeTeleOpState.FINISH);
 
-        FSM6.defineTransition(DecodeTeleOpState.START, DecodeTeleOpEvent.GET_NEXT_EVENT, new ArrayList<>(Arrays.asList(
+        FSM6.defineTransition(DecodeTeleOpState.START, DecodeTeleOpEvent.GET_NEXT_EVENT, new ArrayList<GenericFSM6.Transition>(Arrays.asList(
+                FSM6.new Transition(DecodeTeleOpState.INTAKE_DONE,
+                        // Guard condition
+                        () -> {
+                            return artifactsInRevolver == MAX_ARTIFACTS_IN_REVOLVER;
+                        },
+                        // Action
+                        null
+                ),
                 FSM6.new Transition(DecodeTeleOpState.INTAKE_IN_PROGRESS,
                         // Guard condition
                         () -> {
                             intakeToggleButton.update();
-                            if (!intakeToggleButton.is(FTCButton.State.TAP) || revolverIsFull())
-                                return false;
-                            return true;
+                            return intakeToggleButton.is(FTCButton.State.TAP);
                         },
                         // Action
                         () -> {
@@ -93,66 +99,11 @@ public class FSM6Container {
                             return null;
                         }
                 ),
-                FSM6.new Transition(DecodeTeleOpState.START,
-                        // Guard condition
-                        () -> {
-                            greenSelectionButton.update();
-                            if (!greenSelectionButton.is(FTCButton.State.TAP))
-                                return false;
-                            return true;
-                        },
-                        // Action
-                        //**TODO selectionButtonAction will move the patternSelectionFSM.
-                        () -> {
-                            selectionButtonAction(RobotConstantsDecode.ArtifactColor.GREEN);
-                            return null;
-                        }
-                ),
-                FSM6.new Transition(DecodeTeleOpState.START,
-                        // Guard condition
-                        () -> {
-                            purpleSelectionButton.update();
-                            if (!purpleSelectionButton.is(FTCButton.State.TAP))
-                                return false;
-                            return true;
-                        },
-                        // Action
-                        //**TODO selectionButtonAction will move the patternSelectionFSM.
-                        () -> {
-                            selectionButtonAction(RobotConstantsDecode.ArtifactColor.PURPLE);
-                            return null;
-                        }
-                ),
-                FSM6.new Transition(DecodeTeleOpState.START,
-                        // Guard condition
-                        () -> {
-                            patternConfirmationButton.update();
-                            if (!patternConfirmationButton.is(FTCButton.State.TAP))
-                                return false;
-                            return true;
-                        },
-                        // Action
-                        //**TODO patternConfirmationButtonAction will move the patternSelectionFSM.
-                        () -> {
-                            patternConfirmationButtonAction();
-                            return null;
-                        }
-                ),
-                FSM6.new Transition(DecodeTeleOpState.START,
-                        // Guard condition
-                        () -> {
-                            patternCancellationButton.update();
-                            if (!patternCancellationButton.is(FTCButton.State.TAP))
-                                return false;
-                            return true;
-                        },
-                        // Action
-                        //**TODO cancellationButtonAction will move the patternSelectionFSM.
-                        () -> {
-                            patternCancellationButtonAction();
-                            return null;
-                        }
-                ),
+                getPatternSelectionTransition(DecodeTeleOpState.START,RobotConstantsDecode.ArtifactColor.GREEN),
+                getPatternSelectionTransition(DecodeTeleOpState.START,RobotConstantsDecode.ArtifactColor.PURPLE),
+                getPatternConfirmationTransition(DecodeTeleOpState.START),
+                getPatternCancellationTransition(DecodeTeleOpState.START),
+
                 // Default
                 FSM6.new Transition(DecodeTeleOpState.START,
                         null,
@@ -168,9 +119,7 @@ public class FSM6Container {
                 FSM6.new Transition(DecodeTeleOpState.INTAKE_DONE,
                         // Guard condition
                         () -> {
-                            if (artifactsInRevolver != MAX_ARTIFACTS_IN_REVOLVER)
-                                return false;
-                            return true;
+                            return artifactsInRevolver == MAX_ARTIFACTS_IN_REVOLVER;
                         },
                         // Action
                         null
@@ -179,9 +128,7 @@ public class FSM6Container {
                         // Guard condition
                         () -> {
                             intakeToggleButton.update();
-                            if (!intakeToggleButton.is(FTCButton.State.TAP))
-                                return false;
-                            return true;
+                            return intakeToggleButton.is(FTCButton.State.TAP);
                         },
                         // Action
                         () -> {
@@ -189,69 +136,11 @@ public class FSM6Container {
                             return null;
                         }
                 ),
-                //**TODO The only difference between the Transition declarations
-                // for pattern selection here and under START is the State.
-                // private Transition getGreenSelectionTransition(DecodeTeleOpState.INTAKE_IN_PROGRESS);
-                FSM6.new Transition(DecodeTeleOpState.INTAKE_IN_PROGRESS,
-                        // Guard condition
-                        () -> {
-                            greenSelectionButton.update();
-                            if (!greenSelectionButton.is(FTCButton.State.TAP))
-                                return false;
-                            return true;
-                        },
-                        // Action
-                        //**TODO selectionButtonAction will move the patternSelectionFSM.
-                        () -> {
-                            selectionButtonAction(RobotConstantsDecode.ArtifactColor.GREEN);
-                            return null;
-                        }
-                ),
-                FSM6.new Transition(DecodeTeleOpState.INTAKE_IN_PROGRESS,
-                        // Guard condition
-                        () -> {
-                            purpleSelectionButton.update();
-                            if (!purpleSelectionButton.is(FTCButton.State.TAP))
-                                return false;
-                            return true;
-                        },
-                        // Action
-                        //**TODO selectionButtonAction will move the patternSelectionFSM.
-                        () -> {
-                            selectionButtonAction(RobotConstantsDecode.ArtifactColor.PURPLE);
-                            return null;
-                        }
-                ),
-                FSM6.new Transition(DecodeTeleOpState.INTAKE_IN_PROGRESS,
-                        // Guard condition
-                        () -> {
-                            patternConfirmationButton.update();
-                            if (!patternConfirmationButton.is(FTCButton.State.TAP))
-                                return false;
-                            return true;
-                        },
-                        // Action
-                        //**TODO patternConfirmationButtonAction will move the patternSelectionFSM.
-                        () -> {
-                            patternConfirmationButtonAction();
-                            return null;
-                        }
-                ),
-                FSM6.new Transition(DecodeTeleOpState.INTAKE_IN_PROGRESS,
-                        // Guard condition
-                        () -> {
-                            patternCancellationButton.update();
-                            if (!patternCancellationButton.is(FTCButton.State.TAP))
-                                return false;
-                            return true;
-                        },
-                        // Action
-                        //**TODO cancellationButtonAction will move the patternSelectionFSM.
-                        () -> {
-                            patternCancellationButtonAction();
-                            return null;
-                        }
-                ),
+                getPatternSelectionTransition(DecodeTeleOpState.INTAKE_IN_PROGRESS,RobotConstantsDecode.ArtifactColor.GREEN),
+                getPatternSelectionTransition(DecodeTeleOpState.INTAKE_IN_PROGRESS,RobotConstantsDecode.ArtifactColor.PURPLE),
+                getPatternConfirmationTransition(DecodeTeleOpState.INTAKE_IN_PROGRESS),
+                getPatternCancellationTransition(DecodeTeleOpState.INTAKE_IN_PROGRESS),
+
                 // Default
                 FSM6.new Transition(DecodeTeleOpState.INTAKE_IN_PROGRESS,
                         null,
@@ -277,59 +166,16 @@ public class FSM6Container {
 
         // ***** STATE MACHINE DEFINITIONS ARE COMPLETE *****
 
-        //**TODO Need a loop on GET_NEXT_EVENT and also test
-        // OPMDDE_INACTIVE event throughout the FSM.
-
-
+        //**TODO test OPMDDE_INACTIVE event throughout the FSM.
+        
         System.out.println("Starting the state machine at state " + FSM6.getCurrentState());
         RobotLogCommon.d(TAG, "Starting the state machine at state " + FSM6.getCurrentState());
         Pair<DecodeTeleOpState, DecodeTeleOpEvent> processEventOutput = moveTeleOpFSM(DecodeTeleOpEvent.GET_NEXT_EVENT);
-        if (processEventOutput.second != null) {
-            //**TODO is this ever legal??
+        while (processEventOutput.second != DecodeTeleOpEvent.EXIT) {
+            processEventOutput = moveTeleOpFSM(processEventOutput.second);
         }
 
-        Pair<DecodeTeleOpState, DecodeTeleOpEvent> processEvent2Output = null;
-        if (processEventOutput.second != null) {
-            processEvent2Output = FSM6.processEvent(processEventOutput.second);
-            if (processEvent2Output.first == null)
-                throw new AutonomousRobotException(TAG, "No transition for state " + FSM6.getCurrentState() + " and event " + processEventOutput.second);
-            else {
-                RobotLogCommon.d(TAG, "New current state " + processEvent2Output.first);
-                if (processEvent2Output.second == null)
-                    RobotLogCommon.d(TAG, "No internal event supplied by an action routine");
-                else
-                    RobotLogCommon.d(TAG, "Internal event " + processEvent2Output.second + " supplied by an action routine");
-            }
-        }
-
-        Pair<DecodeTeleOpState, DecodeTeleOpEvent> processEvent3Output = null;
-        if (processEvent2Output.second != null) {
-            processEvent3Output = FSM6.processEvent(processEvent2Output.second);
-            if (processEvent3Output.first == null)
-                throw new AutonomousRobotException(TAG, "No transition for state " + FSM6.getCurrentState() + " and event " + processEventOutput.second);
-            else {
-                RobotLogCommon.d(TAG, "New current state " + processEvent3Output.first);
-                if (processEvent3Output.second == null)
-                    RobotLogCommon.d(TAG, "No internal event supplied by an action routine");
-                else
-                    RobotLogCommon.d(TAG, "Internal event " + processEvent3Output.second + " supplied by an action routine");
-            }
-        }
-
-        Pair<DecodeTeleOpState, DecodeTeleOpEvent> processEvent4Output = null;
-        if (processEvent3Output.second != null) {
-            processEvent4Output = FSM6.processEvent(processEvent3Output.second);
-            if (processEvent4Output.first == null)
-                throw new AutonomousRobotException(TAG, "No transition for state " + FSM6.getCurrentState() + " and event " + processEventOutput.second);
-            else {
-                RobotLogCommon.d(TAG, "New current state " + processEvent4Output.first);
-                if (processEvent4Output.second == null)
-                    RobotLogCommon.d(TAG, "No internal event supplied by an action routine");
-                else
-                    RobotLogCommon.d(TAG, "Internal event " + processEvent4Output.second + " supplied by an action routine");
-            }
-        }
-
+        RobotLogCommon.d(TAG, "Done traversing the state machine at state " + FSM6.getCurrentState());
         RobotLogCommon.closeLog();
     }
 
@@ -351,6 +197,54 @@ public class FSM6Container {
         }
 
         return Pair.create(processEventOutput.first, nextEvent);
+    }
+
+    private GenericFSM6.Transition getPatternSelectionTransition(DecodeTeleOpState pNextState, RobotConstantsDecode.ArtifactColor pColor) {
+        return FSM6.new Transition(pNextState,
+                // Guard condition
+                () -> {
+                    greenSelectionButton.update();
+                    return greenSelectionButton.is(FTCButton.State.TAP);
+                },
+                // Action
+                //**TODO selectionButtonAction will move the patternSelectionFSM.
+                () -> {
+                    selectionButtonAction(pColor);
+                    return null;
+                }
+        );
+    }
+
+    private GenericFSM6.Transition getPatternConfirmationTransition(DecodeTeleOpState pNextState) {
+        return FSM6.new Transition(pNextState,
+                // Guard condition
+                () -> {
+                    patternConfirmationButton.update();
+                    return patternConfirmationButton.is(FTCButton.State.TAP);
+                },
+                // Action
+                //**TODO patternConfirmationButtonAction will move the patternSelectionFSM.
+                () -> {
+                    patternConfirmationButtonAction();
+                    return null;
+                }
+        );
+    }
+
+    private GenericFSM6.Transition getPatternCancellationTransition(DecodeTeleOpState pNextState) {
+        return FSM6.new Transition(DecodeTeleOpState.START,
+                // Guard condition
+                () -> {
+                    patternCancellationButton.update();
+                    return patternCancellationButton.is(FTCButton.State.TAP);
+                },
+                // Action
+                //**TODO cancellationButtonAction will move the patternSelectionFSM.
+                () -> {
+                    patternCancellationButtonAction();
+                    return null;
+                }
+        );
     }
 
     private boolean revolverIsFull() {

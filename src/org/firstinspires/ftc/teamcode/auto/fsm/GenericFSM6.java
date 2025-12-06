@@ -144,6 +144,7 @@ public class GenericFSM6<S extends Enum<S>, E extends Enum<E>> {
             // For an internal transition return a non-null event
             // from the non-null action routine.
             nextEvent = oneTransition.executeActionRoutine();
+            break;
         }
 
         return Pair.create(nextState, nextEvent);

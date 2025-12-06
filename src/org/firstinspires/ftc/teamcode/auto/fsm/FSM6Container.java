@@ -78,7 +78,31 @@ public class FSM6Container {
         // return true or false for presence of the condition of interest.
         FSM6.defineTransition(DecodeTeleOpState.START, DecodeTeleOpEvent.OPMODE_INACTIVE, DecodeTeleOpState.FINISH);
 
-        FSM6.defineTransition(DecodeTeleOpState.START, DecodeTeleOpEvent.GET_NEXT_EVENT, new ArrayList<GenericFSM6.Transition>(Arrays.asList(
+        ArrayList<GenericFSM6.Transition> tl = new ArrayList<GenericFSM6.Transition>();
+        tl.add(FSM6.new Transition(DecodeTeleOpState.INTAKE_DONE,
+                // Guard condition
+                () -> {
+                    return artifactsInRevolver == MAX_ARTIFACTS_IN_REVOLVER;
+                },
+                // Action
+                null
+        ));
+        FSM6.defineTransition(DecodeTeleOpState.START, DecodeTeleOpEvent.GET_NEXT_EVENT, tl);
+
+
+            FSM6.defineTransition(DecodeTeleOpState.START, DecodeTeleOpEvent.GET_NEXT_EVENT, new ArrayList<GenericFSM6.Transition>() {{
+            add(FSM6.new Transition(DecodeTeleOpState.INTAKE_DONE,
+                        // Guard condition
+                        () -> {
+                            return artifactsInRevolver == MAX_ARTIFACTS_IN_REVOLVER;
+                        },
+                        // Action
+                        null
+                ));
+        }});
+
+
+        FSM6.defineTransition(DecodeTeleOpState.START, DecodeTeleOpEvent.GET_NEXT_EVENT, new ArrayList<GenericFSM6.Transition>(Arrays.<GenericFSM6.Transition>asList(
                 FSM6.new Transition(DecodeTeleOpState.INTAKE_DONE,
                         // Guard condition
                         () -> {
@@ -115,7 +139,7 @@ public class FSM6Container {
 
         FSM6.defineTransition(DecodeTeleOpState.INTAKE_IN_PROGRESS, DecodeTeleOpEvent.OPMODE_INACTIVE, DecodeTeleOpState.FINISH);
 
-        FSM6.defineTransition(DecodeTeleOpState.INTAKE_IN_PROGRESS, DecodeTeleOpEvent.GET_NEXT_EVENT, new ArrayList<>(Arrays.asList(
+        FSM6.defineTransition(DecodeTeleOpState.INTAKE_IN_PROGRESS, DecodeTeleOpEvent.GET_NEXT_EVENT, new ArrayList<GenericFSM6.Transition>(Arrays.<GenericFSM6.Transition>asList(
                 FSM6.new Transition(DecodeTeleOpState.INTAKE_DONE,
                         // Guard condition
                         () -> {

@@ -58,14 +58,14 @@ public class FSM6Container {
     private boolean customPatternTimerStarted = false;
 
     public FSM6Container() {
-        intakeToggleButton = new FTCToggleButtonNWay<>(() -> true, EnumSet.allOf(IntakeState.class));
+        intakeToggleButton = new FTCToggleButtonNWay<>(() -> intakeToggleOn, EnumSet.allOf(IntakeState.class));
         greenSelectionButton = new FTCButton(() -> false);
         purpleSelectionButton = new FTCButton(() -> false);
         patternConfirmationButton = new FTCButton(() -> false);
         patternCancellationButton = new FTCButton(() -> false);
     }
 
-    public void testFSM6() {
+    public void testFSM6() throws InterruptedException {
         String logDirPath = WorkingDirectory.getWorkingDirectory() + RobotConstants.logDir;
         RobotLogCommon.OpenStatus openStatus = RobotLogCommon.initialize(RobotLogCommon.LogIdentifier.AUTO_LOG,
                 logDirPath);
@@ -114,9 +114,10 @@ public class FSM6Container {
                 new GenericFSM6.Transition<>(DecodeTeleOpState.INTAKE_DONE,
                         // Guard condition
                         () -> {
-                    //**TODO prevents the running of the FSM because the
-                            // state of the button is HELD - need temp
-                            // method to set the state to OFF.
+                    //**TODO TEMP - make sure button state is TAP, i.e. toggle off
+                            intakeToggleOn = false;
+                            intakeToggleButton.update();
+                            intakeToggleOn = true;
                             intakeToggleButton.update();
                             return intakeToggleButton.is(FTCButton.State.TAP);
                         },
@@ -161,7 +162,11 @@ public class FSM6Container {
         DecodeTeleOpEvent nextEvent = DecodeTeleOpEvent.GET_NEXT_EVENT;
         while (nextEvent != DecodeTeleOpEvent.EXIT) {
             //***TODO You could update all button states here
+
+            RobotLogCommon.d(TAG, "FSM current state " + FSM6.getCurrentState() + ", event " +
+                    nextEvent);
             nextEvent = moveTeleOpFSM(nextEvent);
+            RobotLogCommon.d(TAG, "FSM new current state " + FSM6.getCurrentState() + ", next event " + nextEvent);
         }
 
         RobotLogCommon.d(TAG, "Done traversing the state machine at state " + FSM6.getCurrentState());

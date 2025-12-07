@@ -24,15 +24,12 @@
 package org.firstinspires.ftc.teamcode.auto.fsm;
 
 import org.firstinspires.ftc.ftcdevcommon.Pair;
-import org.firstinspires.ftc.ftcdevcommon.platform.intellij.RobotLogCommon;
 
 import java.util.*;
 import java.util.function.Supplier;
 
 // Generic types: state (S), internal event enumeration (E).
 public class GenericFSM6<S extends Enum<S>, E extends Enum<E>> {
-
-    private static final String TAG = GenericFSM6.class.getSimpleName();
 
     // The FSM is an EnumMap whose key is the current state (S); the
     // associated value is a second EnumMap<E, List<Transition>>.
@@ -134,9 +131,6 @@ public class GenericFSM6<S extends Enum<S>, E extends Enum<E>> {
             //**TODO throw IllegalStateException on null next state?
             // or allow as terminating condition.
             nextState = oneTransition.getNextState();
-            RobotLogCommon.d(TAG, "FSM current state " + currentState.toString() + ", event " +
-                    pEvent + ", next state " + nextState.toString());
-
             currentState = nextState;
             Supplier<E> actionRoutine = oneTransition.actionRoutine;
             if (actionRoutine == null) {

@@ -57,6 +57,11 @@ public class FTCButton {
         return state == pState;
     }
 
+    //**TODO For testing
+    public State getState() {
+        return state;
+    }
+
     public long getTimeHeld(){
         return timeHeld;
     }

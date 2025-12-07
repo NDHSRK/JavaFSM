@@ -51,6 +51,8 @@ public class FSM6Container {
     private final FTCButton patternConfirmationButton;
     private final FTCButton patternCancellationButton;
 
+    private int iterationCount = 0;
+
     enum ArtifactColor {GREEN, PURPLE}
 
     private final List<ArtifactColor> artifactPattern = new ArrayList<>();
@@ -114,12 +116,20 @@ public class FSM6Container {
                 new GenericFSM6.Transition<>(DecodeTeleOpState.INTAKE_DONE,
                         // Guard condition
                         () -> {
-                    //**TODO TEMP - make sure button state is TAP, i.e. toggle off
+                            return true; //**TODO just default to true because of spurious double-tap
+                            /*
+                            System.out.println("Guard at transition to " + DecodeTeleOpState.INTAKE_DONE);
+                            // works in non-debug run return true;
+                            System.out.println("Intake toggle state on entry " + intakeToggleButton.getState());
                             intakeToggleOn = false;
                             intakeToggleButton.update();
+                            System.out.println("Intake toggle button after set to false " + intakeToggleButton.getState());
                             intakeToggleOn = true;
                             intakeToggleButton.update();
+                            System.out.println("Intake toggle button after set to true " + intakeToggleButton.getState());
+                            System.out.println("Intake toggle TAP " + intakeToggleButton.is(FTCButton.State.TAP));
                             return intakeToggleButton.is(FTCButton.State.TAP);
+                            */
                         },
                         // Action
                         () -> {
@@ -136,7 +146,10 @@ public class FSM6Container {
                 new GenericFSM6.Transition<>(DecodeTeleOpState.INTAKE_IN_PROGRESS,
                         null,
                         // Action
-                        () -> null
+                        () -> {
+                    System.out.println("Transition to " + DecodeTeleOpState.INTAKE_IN_PROGRESS + "; return null");
+                    return null;
+                }
                 ))));
 
         FSM6.defineTransition(DecodeTeleOpState.INTAKE_DONE, DecodeTeleOpEvent.GET_NEXT_EVENT,
@@ -162,6 +175,8 @@ public class FSM6Container {
         DecodeTeleOpEvent nextEvent = DecodeTeleOpEvent.GET_NEXT_EVENT;
         while (nextEvent != DecodeTeleOpEvent.EXIT) {
             //***TODO You could update all button states here
+            if (iterationCount++ >= 20)
+                break;
 
             RobotLogCommon.d(TAG, "FSM current state " + FSM6.getCurrentState() + ", event " +
                     nextEvent);

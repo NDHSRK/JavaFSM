@@ -128,8 +128,9 @@ public class GenericFSM6<S extends Enum<S>, E extends Enum<E>> {
             }
 
             // Got a valid transition.
-            //**TODO throw IllegalStateException on null next state?
-            // or allow as terminating condition.
+            // Instead of throwing an IllegalStateException on
+            // a null next state just return the null and let
+            // the caller handle it.
             nextState = oneTransition.getNextState();
             currentState = nextState;
             Supplier<E> actionRoutine = oneTransition.actionRoutine;

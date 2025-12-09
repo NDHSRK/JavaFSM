@@ -41,6 +41,7 @@ public class FSM6Container {
     private final FTCButton purpleSelectionButton;
     private final FTCButton patternCancellationButton;
     private final FTCButton aimButton;
+    private boolean aimButtonValue = true;
 
     private int iterationCount = 0;
 
@@ -50,20 +51,15 @@ public class FSM6Container {
     public FSM6Container() {
         intakeToggleButton = new FTCToggleButtonNWay<>(() -> intakeToggleOn, EnumSet.allOf(IntakeState.class));
         greenSelectionButton = new FTCButton(() -> false);
-        purpleSelectionButton = new FTCButton(() -> false);
+        purpleSelectionButton = new FTCButton(() -> true);
         patternCancellationButton = new FTCButton(() -> false);
-        aimButton = new FTCButton(() -> true);
+        aimButton = new FTCButton(() -> aimButtonValue);
     }
 
     public void testFSM6() throws InterruptedException {
         String logDirPath = WorkingDirectory.getWorkingDirectory() + RobotConstants.logDir;
         RobotLogCommon.OpenStatus openStatus = RobotLogCommon.initialize(RobotLogCommon.LogIdentifier.AUTO_LOG,
                 logDirPath);
-
-        // Methodology: guard condition methods call [button].update() and
-        // return true or false for presence of the condition of interest.
-        //***TODO You could update all button states here - safer even though
-        // not all buttons are queried at each step of the process.
 
         FSM6.defineTransition(DecodeTeleOpState.START, DecodeTeleOpEvent.GET_NEXT_EVENT, new ArrayList<>(Arrays.asList(
                 new GenericFSM6.Transition<>(DecodeTeleOpState.INTAKE_DONE,
@@ -74,10 +70,7 @@ public class FSM6Container {
                 ),
                 new GenericFSM6.Transition<>(DecodeTeleOpState.INTAKE_IN_PROGRESS,
                         // Guard condition
-                        () -> {
-                            intakeToggleButton.update();
-                            return intakeToggleButton.is(FTCButton.State.TAP);
-                        },
+                        () -> intakeToggleButton.is(FTCButton.State.TAP),
                         // Action
                         () -> {
                             intakeToggleOnAction();
@@ -101,31 +94,33 @@ public class FSM6Container {
                         this::revolverIsFull,
                         // Action
                         () -> {
-                            intakeDoneAction(); //**TODO turn off intake servos, set intake toggle OFF, etc.
+                            intakeDoneAction();
                             return null;
                         }
                 ),
                 new GenericFSM6.Transition<>(DecodeTeleOpState.INTAKE_DONE,
                         // Guard condition
                         () -> {
-                            return true; //**TODO just default to true because of spurious double-tap
-                            // or, since DOUBLE_TAP_INTERVAL_MS = 250, sleep for 300ms in the main loop
-                            /*
+                            //**TODO TEMP for testing Since DOUBLE_TAP_INTERVAL_MS = 250, sleep for 300ms
                             System.out.println("Guard at transition to " + DecodeTeleOpState.INTAKE_DONE);
                             System.out.println("Intake toggle state on entry " + intakeToggleButton.getState());
                             intakeToggleOn = false;
                             intakeToggleButton.update();
                             System.out.println("Intake toggle button after set to false " + intakeToggleButton.getState());
+                            try {
+                                sleep(300);
+                            } catch (InterruptedException e) {
+                                throw new RuntimeException(e);
+                            }
                             intakeToggleOn = true;
                             intakeToggleButton.update();
                             System.out.println("Intake toggle button after set to true " + intakeToggleButton.getState());
                             System.out.println("Intake toggle TAP " + intakeToggleButton.is(FTCButton.State.TAP));
                             return intakeToggleButton.is(FTCButton.State.TAP);
-                            */
                         },
                         // Action
                         () -> {
-                            intakeDoneAction(); //**TODO turn off intake servos, set intake toggle OFF, etc.
+                            intakeDoneAction();
                             return null;
                         }
                 ),
@@ -138,9 +133,15 @@ public class FSM6Container {
                         null,
                         // Action
                         () -> {
-                            System.out.println("Transition to " + DecodeTeleOpState.INTAKE_IN_PROGRESS + "; return null");
+                            //System.out.println("Transition to " + DecodeTeleOpState.INTAKE_IN_PROGRESS + "; return null");
                             return null;
                         }
+                ),
+                // Default
+                new GenericFSM6.Transition<>(DecodeTeleOpState.INTAKE_DONE,
+                        null,
+                        // Action
+                        () -> null
                 ))));
 
         // B: pattern selection after intake ends (by revolver full or driver toggle)
@@ -152,12 +153,7 @@ public class FSM6Container {
                 // Check intake toggle back ON; revolver must not be full.
                 new GenericFSM6.Transition<>(DecodeTeleOpState.INTAKE_IN_PROGRESS,
                         // Guard condition
-                        () -> {
-                            if (revolverIsFull())
-                                return false;
-                            intakeToggleButton.update();
-                            return intakeToggleButton.is(FTCButton.State.TAP);
-                        },
+                        () -> intakeToggleButton.is(FTCButton.State.TAP) && !revolverIsFull(),
                         // Action
                         () -> {
                             intakeToggleOnAction();
@@ -171,14 +167,33 @@ public class FSM6Container {
                 // The driver hits the aim button.
                 new GenericFSM6.Transition<>(DecodeTeleOpState.AIM,
                         // Guard condition
+                        //**TODO Doesn't work because state is HELD
                         () -> {
-                            if (artifactsInRevolver == 0)
-                                return false;
+                            //**TODO TEMP for testing Since DOUBLE_TAP_INTERVAL_MS = 250, sleep for 300ms
+                            System.out.println("Guard at transition to " + DecodeTeleOpState.AIM);
+                            System.out.println("Aim button state on entry " + aimButton.getState());
+                            aimButtonValue = false;
                             aimButton.update();
-                            return aimButton.is(FTCButton.State.TAP);
+                            System.out.println("Aim button after set to false " + aimButton.getState());
+                            try {
+                                sleep(300);
+                            } catch (InterruptedException e) {
+                                throw new RuntimeException(e);
+                            }
+                            aimButtonValue = true;
+                            aimButton.update();
+                            System.out.println("Aim button after set to true " + aimButton.getState());
+                            System.out.println("Aim TAP " + intakeToggleButton.is(FTCButton.State.TAP));
+                            return aimButton.is(FTCButton.State.TAP) && artifactsInRevolver != 0;
                         },
                         // Action
                         () -> DecodeTeleOpEvent.EXIT
+                ),
+                // Default
+                 new GenericFSM6.Transition<>(DecodeTeleOpState.INTAKE_DONE,
+                    null,
+                    // Action
+                    () -> null
                 ))));
 
         //**TODO TEMP stop here
@@ -191,11 +206,23 @@ public class FSM6Container {
 
         //**TODO while (linearOpMode.opModeIsActive() && nextEvent != DecodeTeleOpEvent.EXIT) {}
 
+        // Methodology: guard condition methods call update[button]() and
+        // return true or false for presence of the condition of interest.
+
         DecodeTeleOpEvent nextEvent = DecodeTeleOpEvent.GET_NEXT_EVENT;
         while (nextEvent != DecodeTeleOpEvent.EXIT) {
-            //***TODO You could update all button states here
-            if (iterationCount++ >= 20)
+            if (iterationCount++ >= 20) //**TODO stop infinite loops
                 break;
+
+            // Updating all button states here is safer even though
+            // not all buttons are queried at each step of the process.
+            if (nextEvent == DecodeTeleOpEvent.GET_NEXT_EVENT) {
+                intakeToggleButton.update();
+                greenSelectionButton.update();
+                purpleSelectionButton.update();
+                patternCancellationButton.update();
+                aimButton.update();
+            }
 
             RobotLogCommon.d(TAG, "FSM current state " + FSM6.getCurrentState() + ", event " +
                     nextEvent);
@@ -208,7 +235,8 @@ public class FSM6Container {
         }
 
         RobotLogCommon.d(TAG, "Done traversing the state machine at state " + FSM6.getCurrentState());
-
+        RobotLogCommon.d(TAG, "Artifacts in the Revolver " + artifactsInRevolver);
+        RobotLogCommon.d(TAG, "Artifact pattern " + artifactPattern);
         RobotLogCommon.closeLog();
     }
 
@@ -237,14 +265,11 @@ public class FSM6Container {
                                                                                                        FTCButton pColorButton, RobotConstantsDecode.ArtifactColor pColor) {
         return new GenericFSM6.Transition<>(pNextState,
                 // Guard condition
-                () -> {
-                    pColorButton.update();
-                    return pColorButton.is(FTCButton.State.TAP) && artifactPattern.size() < RobotConstantsDecode.MAX_ARTIFACTS_IN_PATTERN;
-                },
+                () -> pColorButton.is(FTCButton.State.TAP) && artifactPattern.size() < RobotConstantsDecode.MAX_ARTIFACTS_IN_PATTERN,
                 // Action
                 () -> {
                     artifactPattern.add(pColor);
-                    System.out.println(pColor + " added to artifact pattern");
+                    RobotLogCommon.d(TAG, pColor + " added to artifact pattern");
                     return null;
                 }
         );
@@ -253,13 +278,10 @@ public class FSM6Container {
     private GenericFSM6.Transition<DecodeTeleOpState, DecodeTeleOpEvent> getPatternCancellationTransition(DecodeTeleOpState pNextState) {
         return new GenericFSM6.Transition<>(DecodeTeleOpState.START,
                 // Guard condition
-                () -> {
-                    patternCancellationButton.update();
-                    return patternCancellationButton.is(FTCButton.State.TAP);
-                },
+                () -> patternCancellationButton.is(FTCButton.State.TAP),
                 // Action
                 () -> {
-                    System.out.println("Artifact pattern cancelled");
+                    RobotLogCommon.d(TAG,"Artifact pattern cancelled");
                     artifactPattern.clear();
                     return null;
                 }
@@ -279,7 +301,7 @@ public class FSM6Container {
     }
 
     private void intakeDoneAction() {
-        //**TODO intakeDoneAction from DecodeTeleOp
+        //**TODO turn off intake servos, set intake toggle OFF, etc.
     }
 
     private void patternCancellationButtonAction() {

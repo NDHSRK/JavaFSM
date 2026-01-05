@@ -7,7 +7,7 @@
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
-    <orderEntry type="module-library">
+    <orderEntry type="module-library" exported="">
       <library>
         <CLASSES>
           <root url="file://$MODULE_DIR$/../FTCDevCommonIntelliJ/out/artifacts/ftcdevcommon_2_5_jar" />
@@ -17,5 +17,6 @@
         <jarDirectory url="file://$MODULE_DIR$/../FTCDevCommonIntelliJ/out/artifacts/ftcdevcommon_2_5_jar" recursive="false" />
       </library>
     </orderEntry>
+    <orderEntry type="library" name="jinput-2.0.10-natives-all" level="project" />
   </component>
 </module>

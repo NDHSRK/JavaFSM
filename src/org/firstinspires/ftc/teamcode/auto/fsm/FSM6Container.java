@@ -1,5 +1,7 @@
 package org.firstinspires.ftc.teamcode.auto.fsm;
 
+import net.java.games.input.Controller;
+import net.java.games.input.ControllerEnvironment;
 import org.firstinspires.ftc.ftcdevcommon.AutonomousRobotException;
 import org.firstinspires.ftc.ftcdevcommon.Pair;
 import org.firstinspires.ftc.ftcdevcommon.platform.intellij.RobotLogCommon;

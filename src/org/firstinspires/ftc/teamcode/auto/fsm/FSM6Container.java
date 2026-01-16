@@ -56,7 +56,7 @@ public class FSM6Container {
         aimButton = new FTCButton(() -> aimButtonValue);
     }
 
-    public void testFSM6() throws InterruptedException {
+    public void testFSM6() throws Exception {
         String logDirPath = WorkingDirectory.getWorkingDirectory() + RobotConstants.logDir;
         RobotLogCommon.OpenStatus openStatus = RobotLogCommon.initialize(RobotLogCommon.LogIdentifier.AUTO_LOG,
                 logDirPath);
@@ -242,7 +242,7 @@ public class FSM6Container {
 
     //**TODO see GenericFSM6 - do not allow null next state?
     // or allow as terminating condition.
-    private DecodeTeleOpEvent moveTeleOpFSM(DecodeTeleOpEvent pEvent) {
+    private DecodeTeleOpEvent moveTeleOpFSM(DecodeTeleOpEvent pEvent) throws Exception {
         DecodeTeleOpEvent nextEvent;
         Pair<DecodeTeleOpState, DecodeTeleOpEvent> processEventOutput = FSM6.processEvent(pEvent);
         if (processEventOutput.first == null)

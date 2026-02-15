@@ -17,5 +17,6 @@
         <jarDirectory url="file://$MODULE_DIR$/../FTCDevCommonIntelliJ/out/artifacts/ftcdevcommon_2_5_jar" recursive="false" />
       </library>
     </orderEntry>
+    <orderEntry type="library" name="jinput-2.0.10" level="project" />
   </component>
 </module>

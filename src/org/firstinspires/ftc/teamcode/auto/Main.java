@@ -79,30 +79,27 @@ public class Main {
             return;
         }
 
-        //FTCButton intakeButton = new FTCButton(() -> getGamepad1Value(f310, FTCGamepad1ComponentId.GAMEPAD_1_A));
-        //FTCButton aimByAprilTagButton = new FTCButton(() -> getGamepad1Value(f310, FTCGamepad1ComponentId.GAMEPAD_1_DPAD_UP));
+        FTCButton intakeButton = new FTCButton(() -> getGamepad1Value(f310, FTCGamepad1ComponentId.GAMEPAD_1_A));
+        FTCButton aimByAprilTagButton = new FTCButton(() -> getGamepad1Value(f310, FTCGamepad1ComponentId.GAMEPAD_1_DPAD_UP));
 
-        //**TODO How do you do this?
+        //**TODO How do you do this? Via a separate method - can't use getGamepad1Value()
         //         shootButton = new FTCButton(() -> linearOpMode.gamepad1.right_trigger > 0.5);
 
-        // Poll for gamepad 1 events.
+        // Poll for gamepad1 events.
         while (true) {
-            if (getGamepad1Value(f310, FTCGamepad1ComponentId.GAMEPAD_1_A)) {
+
+            intakeButton.update();
+            aimByAprilTagButton.update();
+
+            if (intakeButton.is(FTCButton.State.TAP)) {
                 System.out.println("Successful detection of button press on " + FTCGamepad1ComponentId.GAMEPAD_1_A);
                 return;
             }
-            //intakeButton.update();
-            //aimByAprilTagButton.update();
 
-            //if (intakeButton.is(FTCButton.State.TAP)) {
-            //    System.out.println("Successful detection of button press on " + FTCGamepad1ComponentId.GAMEPAD_1_A);
-            //    return;
-            ///}
-
-            //if (aimByAprilTagButton.is(FTCButton.State.TAP)) {
-            //    System.out.println("Successful detection of button press on " + FTCGamepad1ComponentId.GAMEPAD_1_DPAD_UP);
-            //    return;
-            //}
+            if (aimByAprilTagButton.is(FTCButton.State.TAP)) {
+                System.out.println("Successful detection of button press on " + FTCGamepad1ComponentId.GAMEPAD_1_DPAD_UP);
+                return;
+            }
 
             Thread.sleep(20); // Small delay to reduce CPU usage
         }
@@ -113,13 +110,11 @@ public class Main {
         //fsm6C.testFSM6();
     }
 
-    private static boolean getGamepad1Value(Controller pGamepad1, FTCGamepad1ComponentId pComponentId) throws InterruptedException {
-        boolean continuePolling = true;
-        while (continuePolling) {
-            pGamepad1.poll(); // Poll the controller to get new data
-            Component[] components = pGamepad1.getComponents();
+    private static boolean getGamepad1Value(Controller pGamepad1, FTCGamepad1ComponentId pComponentId) {
+        pGamepad1.poll(); // Poll the controller to get new data
+        Component[] components = pGamepad1.getComponents();
 
-            for (Component component : components) {
+        for (Component component : components) {
 
                 /*
                 F310 Button Mapping (XInput Mode)
@@ -136,39 +131,33 @@ public class Main {
                 Left Stick Click: Component.Identifier.Button._8
                 Right Stick Click: Component.Identifier.Button._9
                  */
-                if (component.getIdentifier() instanceof Component.Identifier.Button) {
-                    float value = component.getPollData();
-                    if (value == 1.0f) {
-                        // Button is pressed
-                        System.out.println(component.getName() + " pressed");
+            if (component.getIdentifier() instanceof Component.Identifier.Button) {
+                float value = component.getPollData();
 
-                        // Example: Specifically check for the 'A' button
-                        if (component.getIdentifier() == Component.Identifier.Button._0) {
-                            // This is usually the A button in XInput
-                            return true;
-                        }
-                    }
-                    continue;
+                // Specifically check for the requested button.
+                if (component.getIdentifier() == pComponentId.getComponentId() && value == 1.0f) {
+                    return true;
                 }
+
+                continue;
+            }
 
                 /*
                 Handling D-Pad (POV)
                 The D-Pad is typically not registered as a button, but as a POV (Point of View) component.
                 Its value is an angle (0.0 to 1.0, where -1 is neutral).
                 */
+            if (component.getIdentifier() == Component.Identifier.Axis.POV) {
+                float povValue = component.getPollData();
+                if (povValue == Component.POV.UP) {
+                    System.out.println("DPAD up pressed");
+                    return true;
+                } // DP up
+                else if (povValue == Component.POV.DOWN) {
 
-
-                if (component.getIdentifier() == Component.Identifier.Axis.POV) {
-                    float povValue = component.getPollData();
-                    if (povValue == Component.POV.UP) {
-                        System.out.println("DPAD up pressed");
-                        return true;
-                    } // DP up
-                    else if (povValue == Component.POV.DOWN) {
-
-                    } // DP down
-                }
-
+                } // DP down
+                continue;
+            }
 
                 /*
                 Key Information for X-Input Triggers
@@ -186,19 +175,15 @@ public class Main {
                 Left trigger pulled 0.99612427, i.e. >= 0.01 && <= 1.0
                 Right trigger pulled -0.9960937, i.e. <= -0.01 && >= -1.0
                  */
-                if (component.getIdentifier() == Component.Identifier.Axis.Z) {
-                    float value = component.getPollData();
-                    if (value >= 0.01 && value <= 1.0)
-                        System.out.println("Left trigger pulled, value: " + value);
-                    else if (value <= -0.01 && value >= -1.0)
-                        System.out.println("Right trigger pulled, value: " + value);
-                }
-                //continuePolling = false;
-                //break;
+            if (component.getIdentifier() == Component.Identifier.Axis.Z) {
+                float value = component.getPollData();
+                if (value >= 0.01 && value <= 1.0)
+                    System.out.println("Left trigger pulled, value: " + value);
+                else if (value <= -0.01 && value >= -1.0)
+                    System.out.println("Right trigger pulled, value: " + value);
             }
-
-            Thread.sleep(20); // Small delay to reduce CPU usage
         }
+
         return false;
 
     }

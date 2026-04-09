@@ -1,7 +1,6 @@
 package org.firstinspires.ftc.teamcode.auto;
 
 import net.java.games.input.*;
-import org.firstinspires.ftc.teamcode.auto.fsm.FSM6Container;
 
 public class Main {
 
@@ -62,25 +61,25 @@ public class Main {
         }
     }
 
-    private static Controller f310;
+    private static Controller f310Gamepad1;
 
     public static void main(String[] args) throws InterruptedException {
 
         Controller[] controllers = ControllerEnvironment.getDefaultEnvironment().getControllers();
         for (Controller c : controllers) {
             if (c.getName().contains("Logitech") || c.getName().contains("F310")) {
-                f310 = c;
+                f310Gamepad1 = c;
                 break;
             }
         }
 
-        if (f310 == null) {
+        if (f310Gamepad1 == null) {
             System.out.println("F310 not found!");
             return;
         }
 
-        FTCButton intakeButton = new FTCButton(() -> getGamepad1Value(f310, FTCGamepad1ComponentId.GAMEPAD_1_A));
-        FTCButton aimByAprilTagButton = new FTCButton(() -> getGamepad1Value(f310, FTCGamepad1ComponentId.GAMEPAD_1_DPAD_UP));
+        FTCButton intakeButton = new FTCButton(() -> gamepad1ButtonPressed(f310Gamepad1, FTCGamepad1ComponentId.GAMEPAD_1_A));
+        FTCButton aimByAprilTagButton = new FTCButton(() -> gamepad1ButtonPressed(f310Gamepad1, FTCGamepad1ComponentId.GAMEPAD_1_DPAD_UP));
 
         //**TODO How do you do this? Via a separate method - can't use getGamepad1Value()
         //         shootButton = new FTCButton(() -> linearOpMode.gamepad1.right_trigger > 0.5);
@@ -110,27 +109,27 @@ public class Main {
         //fsm6C.testFSM6();
     }
 
-    private static boolean getGamepad1Value(Controller pGamepad1, FTCGamepad1ComponentId pComponentId) {
+    //**TODO To make this work for both gamepads you have to combine
+    // FTCGamepad1ComponentId and FTCGamepad2ComponentId
+    private static boolean gamepad1ButtonPressed(Controller pGamepad1, FTCGamepad1ComponentId pComponentId) {
         pGamepad1.poll(); // Poll the controller to get new data
         Component[] components = pGamepad1.getComponents();
-
         for (Component component : components) {
+            /*
+            F310 Button Mapping (XInput Mode)
+            If the switch on the back of the F310 is set to X, the buttons generally map to these JInput Identifiers:
 
-                /*
-                F310 Button Mapping (XInput Mode)
-                If the switch on the back of the F310 is set to X, the buttons generally map to these JInput Identifiers:
-
-                A Button: Component.Identifier.Button._0
-                B Button: Component.Identifier.Button._1
-                X Button: Component.Identifier.Button._2
-                Y Button: Component.Identifier.Button._3
-                Left Bumper: Component.Identifier.Button._4
-                Right Bumper: Component.Identifier.Button._5
-                Back: Component.Identifier.Button._6
-                Start: Component.Identifier.Button._7
-                Left Stick Click: Component.Identifier.Button._8
-                Right Stick Click: Component.Identifier.Button._9
-                 */
+            A Button: Component.Identifier.Button._0
+            B Button: Component.Identifier.Button._1
+            X Button: Component.Identifier.Button._2
+            Y Button: Component.Identifier.Button._3
+            Left Bumper: Component.Identifier.Button._4
+            Right Bumper: Component.Identifier.Button._5
+            Back: Component.Identifier.Button._6
+            Start: Component.Identifier.Button._7
+            Left Stick Click: Component.Identifier.Button._8
+            Right Stick Click: Component.Identifier.Button._9
+             */
             if (component.getIdentifier() instanceof Component.Identifier.Button) {
                 float value = component.getPollData();
 
@@ -142,20 +141,28 @@ public class Main {
                 continue;
             }
 
-                /*
-                Handling D-Pad (POV)
-                The D-Pad is typically not registered as a button, but as a POV (Point of View) component.
-                Its value is an angle (0.0 to 1.0, where -1 is neutral).
-                */
+            /*
+            Handling D-Pad (POV)
+            The D-Pad is typically not registered as a button, but as a POV (Point of View) component.
+            Its value is an angle (0.0 to 1.0, where -1 is neutral).
+            */
+            //**TODO Won't work!! - may have to make FTC buttons generic,
+            // e.g. if (pComponentId == FTCGamepadComponentId.DPAD_UP && povValue == Component.POV.UP)
             if (component.getIdentifier() == Component.Identifier.Axis.POV) {
                 float povValue = component.getPollData();
                 if (povValue == Component.POV.UP) {
-                    System.out.println("DPAD up pressed");
                     return true;
-                } // DP up
-                else if (povValue == Component.POV.DOWN) {
+                }
+                if (povValue == Component.POV.DOWN) {
+                    return true;
+                }
+                if (povValue == Component.POV.LEFT) {
+                    return true;
+                }
+                if (povValue == Component.POV.RIGHT) {
+                    return true;
+                }
 
-                } // DP down
                 continue;
             }
 
@@ -175,6 +182,8 @@ public class Main {
                 Left trigger pulled 0.99612427, i.e. >= 0.01 && <= 1.0
                 Right trigger pulled -0.9960937, i.e. <= -0.01 && >= -1.0
                  */
+            //**TODO Move to separate methodL compare with FTC trigger id
+            // and return float in the range of 0.0 to 1.0
             if (component.getIdentifier() == Component.Identifier.Axis.Z) {
                 float value = component.getPollData();
                 if (value >= 0.01 && value <= 1.0)

@@ -71,56 +71,7 @@ public class RobotConstantsDecode {
         GREEN, PURPLE
     }
 
-    // Obelisk patterns indexed by AprilTag identifiers
-    // Tag family: 36h11
     public static final int MAX_ARTIFACTS_IN_PATTERN = 3;
+    public static final int MAX_ARTIFACTS_IN_REVOLVER = 3;
 
-    // Obelisk tag id 21: pattern GPP
-    public static final Integer obeliskAprilTagGPP = Integer.valueOf(21);
-
-    // Obelisk tag id 22: pattern PGP
-    public static final Integer obeliskAprilTagPGP = Integer.valueOf(22);
-
-    // Obelisk tag id 23: pattern PPG
-    public static final Integer obeliskAprilTagPPG = Integer.valueOf(23);
-
-    public static final Map<Integer, List<ArtifactColor>> obeliskPatterns;
-
-    static {
-        obeliskPatterns = new HashMap<>();
-        obeliskPatterns.put(obeliskAprilTagGPP, new ArrayList<>(Arrays.asList(ArtifactColor.GREEN, ArtifactColor.PURPLE, ArtifactColor.PURPLE)));
-        obeliskPatterns.put(obeliskAprilTagPGP, new ArrayList<>(Arrays.asList(ArtifactColor.PURPLE, ArtifactColor.GREEN, ArtifactColor.PURPLE)));
-        obeliskPatterns.put(obeliskAprilTagPPG, new ArrayList<>(Arrays.asList(ArtifactColor.PURPLE, ArtifactColor.PURPLE, ArtifactColor.GREEN)));
-    }
-
-    // AprilTag identifiers
-    // DECODE Tag family: 36h11
-    // BLUE goal tag id 20
-    // RED goal tag id 24
-    public enum GoalAprilTag {
-        TAG_NPOS(-1),
-        BLUE_GOAL_TAG(20), RED_GOAL_TAG(24);
-
-        private final int numericAprilTagId;
-
-        GoalAprilTag(int pNumericId) {
-            numericAprilTagId = pNumericId;
-        }
-
-        public int getNumericId() {
-            return numericAprilTagId;
-        }
-
-        // Given the numeric id of an AprilTag return its
-        // enumeration.
-        public static GoalAprilTag getEnumValue(int pNumericId) {
-            GoalAprilTag[] tagValues = GoalAprilTag.values();
-            for (GoalAprilTag tagValue : tagValues) {
-                if (tagValue.numericAprilTagId == pNumericId)
-                    return tagValue;
-            }
-
-            return GoalAprilTag.TAG_NPOS; // no match
-        }
-    }
 }

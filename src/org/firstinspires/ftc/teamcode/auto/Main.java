@@ -1,6 +1,7 @@
 package org.firstinspires.ftc.teamcode.auto;
 
 import net.java.games.input.*;
+import org.firstinspires.ftc.teamcode.auto.fsm.DecodeTeleOpFSM;
 
 public class Main {
 
@@ -11,8 +12,10 @@ public class Main {
     private static Controller f310Gamepad1;
     private static Controller f310Gamepad2;
 
-    public static void main(String[] args) throws InterruptedException {
+    public static void main(String[] args) throws Exception {
 
+        // TEMP to test the JInput/FTC gamepad translation.
+        /*
         Controller[] controllers = ControllerEnvironment.getDefaultEnvironment().getControllers();
         for (Controller c : controllers) {
             if (c.getName().contains("Logitech") || c.getName().contains("F310")) {
@@ -56,11 +59,17 @@ public class Main {
 
             Thread.sleep(20); // Small delay to reduce CPU usage
         }
+         */
 
-        //## 1/15/2022 GenericFSM, GenericFSM2 - 4 are retained as documentation for various
-        // attempts and false starts.
-        //FSM6Container fsm6C = new FSM6Container();
-        //fsm6C.testFSM6();
+        //**TODO Put the number of gamepads on the command line.
+        //**TODO Put the number of artifacts to intake on the command line.
+        System.out.println("Argument count: " + args.length);
+        for (int i = 0; i < args.length; i++) {
+            System.out.println("Argument " + i + ": " + args[i]);
+        }
+
+        DecodeTeleOpFSM teleOpFSM = new DecodeTeleOpFSM(1, 3);
+        teleOpFSM.runIntakeFSM();
     }
 
 }

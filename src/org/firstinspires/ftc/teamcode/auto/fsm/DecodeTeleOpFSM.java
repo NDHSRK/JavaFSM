@@ -20,6 +20,9 @@ import org.firstinspires.ftc.teamcode.auto.FTCButton;
 import org.firstinspires.ftc.teamcode.auto.FTCGamepad;
 import org.firstinspires.ftc.teamcode.auto.RobotConstants;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+
 public class DecodeTeleOpFSM {
 
     private static final String TAG = DecodeTeleOpFSM.class.getSimpleName();
@@ -152,7 +155,200 @@ public class DecodeTeleOpFSM {
     }
 
     private void initializeFSM() {
+        FSM6.defineTransition(DecodeTeleOpState.START, DecodeTeleOpEvent.GET_NEXT_EVENT, new ArrayList<>(Arrays.asList(
+                // Toggle intake ON.
+                // The START state *cannot* be entered when the Revolver is full
+                // because TeleOp assumes that the Revolver is empty at the end
+                // of Auto; there is no communication between Auto and TeleOp.
 
+                // Button press (toggle) to turn intake ON.
+                new GenericFSM6.Transition<>(DecodeTeleOpState.INTAKE_IN_PROGRESS,
+                        // Guard condition
+                        () -> intakeButton.is(FTCButton.State.TAP),
+                        // Action
+                        () -> {
+                            intakeOnAction();
+                            return null;
+                        }
+                ),
+
+                // Default/idle
+                new GenericFSM6.Transition<>(DecodeTeleOpState.START,
+                        null,
+                        // Action
+                        null
+                ))));
+
+        // Intake is running.
+        FSM6.defineTransition(DecodeTeleOpState.INTAKE_IN_PROGRESS, DecodeTeleOpEvent.GET_NEXT_EVENT, new ArrayList<>(Arrays.asList(
+                // Intake is complete because the revolver is full.
+                new GenericFSM6.Transition<>(DecodeTeleOpState.INTAKE_DONE,
+                        // Guard condition
+                        () -> intakeFuture.isDone(),
+                        // Action
+                        () -> {
+                            intakeDoneAction(); // sets the artifactsInRevolver field
+                            return null;
+                        }
+                ),
+
+                new GenericFSM6.Transition<>(DecodeTeleOpState.INTAKE_DONE,
+                        // Guard condition
+                        () -> !intakeButton.is(FTCButton.State.HELD),
+                        // Action
+                        () -> {
+                            intakeOffAction();
+                            intakeDoneAction(); // sets the artifactsInRevolver field
+                            return null;
+                        }
+                ),
+
+                // Turn outtake ON (intake *is* in progress).
+                new GenericFSM6.Transition<>(DecodeTeleOpState.INTAKE_PAUSED_AND_OUTTAKE_IN_PROGRESS,
+                        // Guard condition
+                        () -> outtakeButton.is(FTCButton.State.TAP),
+                        // Action
+                        () -> {
+                            outtakeOnDuringIntakeAction();
+                            return null;
+                        }
+                ),
+
+                // Default/idle
+                new GenericFSM6.Transition<>(DecodeTeleOpState.INTAKE_IN_PROGRESS,
+                        // Guard condition
+                        null,
+                        // Action
+                        null
+                ))));
+
+        // Intake is complete: the revolver is full or intake has
+        // been toggled off with 0 - 2 artifacts in the revolver.
+        FSM6.defineTransition(DecodeTeleOpState.INTAKE_DONE, DecodeTeleOpEvent.GET_NEXT_EVENT, new ArrayList<>(Arrays.asList(
+                // Check button press to toggle intake back ON; the revolver must not be full.
+                new GenericFSM6.Transition<>(DecodeTeleOpState.INTAKE_IN_PROGRESS,
+                        // Guard condition
+                        () -> intakeButton.is(FTCButton.State.TAP) && !revolverIsFull(),
+                        // Action
+                        () -> {
+                            intakeOnAction();
+                            return null;
+                        }
+                ),
+
+                // Turn outtake ON (intake is not running).
+                new GenericFSM6.Transition<>(DecodeTeleOpState.OUTTAKE_IN_PROGRESS,
+                        // Guard condition
+                        () -> outtakeButton.is(FTCButton.State.TAP),
+                        // Action
+                        () -> {
+                            outtakeOnAction();
+                            return null;
+                        }
+                ),
+
+                // Default/idle
+                new GenericFSM6.Transition<>(DecodeTeleOpState.INTAKE_DONE,
+                        // Guard condition
+                        null,
+                        // Action
+                        null
+                ))));
+
+        // Outtake when intake is *not* running.
+        FSM6.defineTransition(DecodeTeleOpState.OUTTAKE_IN_PROGRESS, DecodeTeleOpEvent.GET_NEXT_EVENT, new ArrayList<>(Arrays.asList(
+                // The driver cancels outtake by letting go of the button
+                // and the Revolver is not full.
+                new GenericFSM6.Transition<>(DecodeTeleOpState.OUTTAKE_DONE,
+                        // Guard condition
+                        () -> !outtakeButton.is(FTCButton.State.HELD),
+                        // Action
+                        () -> {
+                            outtakeOffAction();
+                            return null;
+                        }
+                ),
+
+                // Default/idle
+                new GenericFSM6.Transition<>(DecodeTeleOpState.OUTTAKE_IN_PROGRESS,
+                        null,
+                        // Action
+                        null
+                ))));
+
+        // Outtake has been toggled OFF.
+        // At this point the revolver may contain from 0 to 3 artifacts.
+        FSM6.defineTransition(DecodeTeleOpState.OUTTAKE_DONE, DecodeTeleOpEvent.GET_NEXT_EVENT, new ArrayList<>(Arrays.asList(
+                // Check button press to toggle intake back ON; the revolver must not be full.
+                new GenericFSM6.Transition<>(DecodeTeleOpState.INTAKE_IN_PROGRESS,
+                        // Guard condition
+                        () -> intakeButton.is(FTCButton.State.TAP) && !revolverIsFull(),
+                        // Action
+                        () -> {
+                            intakeOnAction();
+                            return null;
+                        }
+                ),
+
+                // Turn outtake ON (intake is not running).
+                new GenericFSM6.Transition<>(DecodeTeleOpState.OUTTAKE_IN_PROGRESS,
+                        // Guard condition
+                        () -> outtakeButton.is(FTCButton.State.TAP),
+                        // Action
+                        () -> {
+                            outtakeOnAction();
+                            return null;
+                        }
+                ),
+
+                // Since outtake is a transitory condition, skip pattern selection while OUTTAKE_DONE is idling.
+                // Default/idle
+                new GenericFSM6.Transition<>(DecodeTeleOpState.OUTTAKE_DONE,
+                        // Guard condition
+                        null,
+                        // Action
+                        null
+                ))));
+
+        // Outtake when intake is paused.
+        FSM6.defineTransition(DecodeTeleOpState.INTAKE_PAUSED_AND_OUTTAKE_IN_PROGRESS, DecodeTeleOpEvent.GET_NEXT_EVENT, new ArrayList<>(Arrays.asList(
+                new GenericFSM6.Transition<>(DecodeTeleOpState.INTAKE_IN_PROGRESS,
+                        // Guard condition
+                        () -> !outtakeButton.is(FTCButton.State.HELD),
+                        // Action
+                        () -> {
+                            outtakeOffDuringIntakeAction();
+                            return null;
+                        }
+                ),
+
+                // Default/idle
+                new GenericFSM6.Transition<>(DecodeTeleOpState.INTAKE_PAUSED_AND_OUTTAKE_IN_PROGRESS,
+                        null,
+                        // Action
+                        null
+                ))));
+    }
+
+    // Guard condition methods.
+    //private boolean revolverIsFull() {
+    //    return artifactsInRevolver == RevolverMotion.MAX_ARTIFACTS_IN_REVOLVER;
+    //}
+
+    // Action routine methods.
+    // Intake
+    private void intakeOnAction() {
+        /*
+        robot.frontIntakeMotor.intake();
+        robot.middleIntakeServo.intake();
+        robot.backIntakeServo.intake();
+
+        CompletableFuture<Integer> localIntakeFuture = intakeMotion.startIntake();
+        if (localIntakeFuture == null)
+            throw new AutonomousRobotException(TAG, "Illegal state: request to intake when intake is already in progress");
+
+        intakeFuture = localIntakeFuture; // intake thread is running
+        */
     }
 
 }

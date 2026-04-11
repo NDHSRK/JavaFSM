@@ -1,6 +1,7 @@
 package org.firstinspires.ftc.teamcode.auto;
 
 import net.java.games.input.*;
+import org.firstinspires.ftc.ftcdevcommon.AutonomousRobotException;
 import org.firstinspires.ftc.teamcode.auto.fsm.DecodeTeleOpFSM;
 
 public class Main {
@@ -61,14 +62,17 @@ public class Main {
         }
          */
 
-        //**TODO Put the number of gamepads on the command line.
-        //**TODO Put the number of artifacts to intake on the command line.
-        System.out.println("Argument count: " + args.length);
-        for (int i = 0; i < args.length; i++) {
-            System.out.println("Argument " + i + ": " + args[i]);
-        }
+        // Get the number of gamepads and the number of artifacts
+        // to intake from the command line.
+        // --numGamepads [1 | 2]
+        // --artifactsToIntake [0 - 3]
+        if (args.length != 4 || !args[0].equals("--numGamepads") || !args[2].equals("--artifactsToIntake"))
+            throw new AutonomousRobotException("Main", "Invalid argument list");
 
-        DecodeTeleOpFSM teleOpFSM = new DecodeTeleOpFSM(1, 3);
+        int numGamepads = Integer.parseInt(args[1]);
+        int artifactsToIntake = Integer.parseInt(args[3]);
+
+        DecodeTeleOpFSM teleOpFSM = new DecodeTeleOpFSM(numGamepads, artifactsToIntake);
         teleOpFSM.runIntakeFSM();
     }
 

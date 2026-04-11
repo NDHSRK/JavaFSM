@@ -68,10 +68,13 @@ public class DecodeTeleOpFSM {
         // Gamepad controllers.
         artifactsToIntake = pArtifactsToIntake;
 
+        //**TODO On every start: INFO: Failed to initialize device HIDI2C Device because of: java.io.IOException: Failed to acquire device (8007001e)
+        // Causes "No controllers found" System.setProperty("net.java.games.input.useDefaultPlugin", "false");
+
         // Connect with the gamepad(s).
         Controller[] controllers = ControllerEnvironment.getDefaultEnvironment().getControllers();
         for (Controller c : controllers) {
-            if (c.getName().contains("Logitech") || c.getName().contains("F310")) {
+            if (c.getName().contains("Gamepad F310")) {
                 System.out.println("Found a Logitech controller with the name " + c.getName());
                 if (f310Gamepad1 == null)
                     f310Gamepad1 = c; // gamepad 1
@@ -102,10 +105,12 @@ public class DecodeTeleOpFSM {
 
     public void runIntakeFSM() throws Exception {
         try {
-            DecodeTeleOpState previousState;
-            DecodeTeleOpEvent previousNextEvent;
+            DecodeTeleOpState previousCurrentState;
+            DecodeTeleOpEvent previousEvent;
             DecodeTeleOpEvent nextEvent = DecodeTeleOpEvent.GET_NEXT_EVENT;
+
             RobotLogCommon.d(TAG, "Starting FSM at state " + FSM6.getCurrentState() + ", next event " + nextEvent);
+            System.out.println( "Starting FSM at state " + FSM6.getCurrentState() + ", next event " + nextEvent);
 
             while (nextEvent != DecodeTeleOpEvent.EXIT) {
                 // Updating all button states here is safer even though
@@ -115,21 +120,25 @@ public class DecodeTeleOpFSM {
                     outtakeButton.update();
                 }
 
-                previousState = FSM6.getCurrentState();
-                previousNextEvent = nextEvent;
+                previousCurrentState = FSM6.getCurrentState();
+                previousEvent = nextEvent;
 
                 // Move the FSM.
                 nextEvent = moveTeleOpFSM(nextEvent);
 
                 // Limit logging to a change in state or event.
-                if (FSM6.getCurrentState() != previousState || nextEvent != previousNextEvent) {
-                    RobotLogCommon.d(TAG, "FSM previous state " + previousState + ", previous next event " + previousNextEvent);
+                if (FSM6.getCurrentState() != previousCurrentState || nextEvent != previousEvent) {
+                    RobotLogCommon.d(TAG, "FSM current state " + previousCurrentState + ", current event " + previousEvent);
                     RobotLogCommon.d(TAG, "FSM new current state " + FSM6.getCurrentState() + ", next event " + nextEvent);
                 }
             }
 
             RobotLogCommon.d(TAG, "Done traversing the state machine at state " + FSM6.getCurrentState());
+            System.out.println( "Done traversing the state machine at state " + FSM6.getCurrentState());
+
             RobotLogCommon.d(TAG, "Artifacts in the Revolver " + artifactsInRevolver);
+            System.out.println( "Artifacts in the Revolver " + artifactsInRevolver);
+
         } finally {
             RobotLogCommon.d(TAG, "In finally() block");
             //intakeMotion.stopIntakeThread();

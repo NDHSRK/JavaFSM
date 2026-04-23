@@ -74,6 +74,7 @@ public class Main {
 
         DecodeTeleOpFSM teleOpFSM = new DecodeTeleOpFSM(numGamepads, artifactsToIntake);
         teleOpFSM.runIntakeFSM();
+        System.exit(0);
     }
 
 }

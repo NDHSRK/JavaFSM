@@ -23,8 +23,11 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class DecodeTeleOpFSM {
 
@@ -36,7 +39,7 @@ public class DecodeTeleOpFSM {
         INTAKE_IN_PROGRESS, INTAKE_DONE,
         OUTTAKE_IN_PROGRESS, OUTTAKE_DONE,
         INTAKE_PAUSED_AND_OUTTAKE_IN_PROGRESS,
-        LIFT_IN_PROGRESS,
+        LIFT_IN_PROGRESS, STOP_LIFTER_REQUESTED,
         FINISH
     }
 
@@ -60,18 +63,56 @@ public class DecodeTeleOpFSM {
     private int artifactsToIntake;
     private int artifactsInRevolver = 0;
 
-    private final FTCButton liftButton;
-    private Instant liftStart; // simulate the start of the lift
+    private final FTCButton lifterButton;
+    private final FTCButton stopLifterButton;
+    private CompletableFuture<Void> completableMoveLifter;
+    private final AtomicBoolean stopLifter = new AtomicBoolean();
+
+    // Move the lifter.
+    //## Note that in this demonstration the AtomicBoolean stopLifter
+    // is not used.
+    private final Callable<Void> callableMoveLifter = () -> {
+        /*
+           FTCRobot.MotorTarget<Lifter.LifterPosition, Integer> target = robot.lifter.getClicksToPosition(Lifter.LifterPosition.RAISE);
+           Objects.requireNonNull(lifterMotion, TAG + " The Lifter is not in the configuration")
+               .moveLifter(target, robot.lifter.velocity, FTCRobot.MotorAction.MOVE_AND_STOP, interruptLifter);
+        */
+
+        // For the simulation, just run a 5-second timer.
+        RobotLogCommon.d(TAG, "Simulated lifter is running");
+
+        Instant start = Instant.now();
+        Instant check;
+        long secondsElapsed;
+        int liftDone = 5; // simulate a five-second lift
+        while (!stopLifter.get()) {
+            check = Instant.now();
+            secondsElapsed = Duration.between(start, check).toSeconds();
+            if (secondsElapsed == liftDone)
+                break;
+
+            try {
+                TimeUnit.MILLISECONDS.sleep(25);
+            } catch (InterruptedException ie) {
+                Thread.currentThread().interrupt();
+            }
+        }
+
+        return null;
+
+    };
 
     private final FTCButton exitButton;
 
 
     public DecodeTeleOpFSM(int pNumGamepads, int pArtifactsToIntake) {
         String logDirPath = WorkingDirectory.getWorkingDirectory() + RobotConstants.logDir;
-        //**TODO Why AUTO_LOG?
-        //**TODO IJ Logging option: duplicate to System.out.println()
-        RobotLogCommon.OpenStatus openStatus = RobotLogCommon.initialize(RobotLogCommon.LogIdentifier.AUTO_LOG,
+        //**TODO IJ Logging option: mirror to System.out.println()
+        RobotLogCommon.OpenStatus openStatus = RobotLogCommon.initialize(RobotLogCommon.LogIdentifier.TELEOP_LOG,
                 logDirPath);
+        if (openStatus != RobotLogCommon.OpenStatus.NEW_LOGGER_CREATED)
+            throw new AutonomousRobotException(TAG, "Logger not initialized");
+
         RobotLogCommon.c(TAG, "Constructing DecodeTeleOpFSM");
 
         // Gamepad controllers.
@@ -102,7 +143,8 @@ public class DecodeTeleOpFSM {
 
         intakeButton = new FTCButton(() -> FTCGamepad.gamepadButtonPressed(f310Gamepad1, FTCGamepad.FTCButtonId.GAMEPAD_A));
         outtakeButton = new FTCButton(() -> FTCGamepad.gamepadButtonPressed(f310Gamepad1, FTCGamepad.FTCButtonId.GAMEPAD_X));
-        liftButton = new FTCButton(() -> FTCGamepad.gamepadButtonPressed(f310Gamepad1, FTCGamepad.FTCButtonId.GAMEPAD_Y));
+        lifterButton = new FTCButton(() -> FTCGamepad.gamepadButtonPressed(f310Gamepad1, FTCGamepad.FTCButtonId.GAMEPAD_Y));
+        stopLifterButton = new FTCButton(() -> FTCGamepad.gamepadButtonPressed(f310Gamepad1, FTCGamepad.FTCButtonId.GAMEPAD_LEFT_BUMPER));
         exitButton = new FTCButton(() -> FTCGamepad.gamepadButtonPressed(f310Gamepad1, FTCGamepad.FTCButtonId.GAMEPAD_B));
 
         // Set up all states and transitions.
@@ -129,7 +171,8 @@ public class DecodeTeleOpFSM {
                 if (nextEvent == DecodeTeleOpEvent.GET_GAMEPAD_EVENT) {
                     intakeButton.update();
                     outtakeButton.update();
-                    liftButton.update();
+                    lifterButton.update();
+                    stopLifterButton.update();
                     exitButton.update();
                 }
 
@@ -220,17 +263,6 @@ public class DecodeTeleOpFSM {
                         () -> DecodeTeleOpEvent.EXIT
                 ),
 
-                // Start the lift
-                new GenericFSM6.Transition<>(DecodeTeleOpState.LIFT_IN_PROGRESS,
-                        // Guard condition
-                        () -> liftButton.is(FTCButton.State.DOUBLE_TAP),
-                        // Action
-                        () -> {
-                            startLiftAction();
-                            return DecodeTeleOpEvent.WAIT_LIFT_DONE;
-                        }
-                ),
-
                 // Check button press to turn intake back ON; the revolver must not be full.
                 new GenericFSM6.Transition<>(DecodeTeleOpState.INTAKE_IN_PROGRESS,
                         // Guard condition
@@ -251,18 +283,18 @@ public class DecodeTeleOpFSM {
                             outtakeOnAction();
                             return DecodeTeleOpEvent.GET_GAMEPAD_EVENT;
                         }
-                ))));
+                ),
 
-        // The lift is running; wait for completion.
-        // Demonstrates the use of an event other than GET_GAMEPAD_EVENT.
-        FSM6.defineTransition(DecodeTeleOpState.LIFT_IN_PROGRESS, DecodeTeleOpEvent.WAIT_LIFT_DONE,
-                // The driver cancels outtake by letting go of the button.
-                new GenericFSM6.Transition<>(DecodeTeleOpState.FINISH,
+                // Start the lifter.
+                new GenericFSM6.Transition<>(DecodeTeleOpState.LIFT_IN_PROGRESS,
                         // Guard condition
-                        this::checkLiftDone,
+                        () -> lifterButton.is(FTCButton.State.DOUBLE_TAP),
                         // Action
-                        () -> DecodeTeleOpEvent.EXIT
-                ));
+                        () -> {
+                            startLiftAction();
+                            return DecodeTeleOpEvent.WAIT_LIFT_DONE;
+                        }
+                ))));
 
         // Outtake when intake is *not* running.
         FSM6.defineTransition(DecodeTeleOpState.OUTTAKE_IN_PROGRESS, DecodeTeleOpEvent.GET_GAMEPAD_EVENT,
@@ -312,6 +344,35 @@ public class DecodeTeleOpFSM {
                             outtakeOffDuringIntakeAction();
                             return DecodeTeleOpEvent.GET_GAMEPAD_EVENT;
                         }
+                ));
+
+        // The lifter is running; wait for completion.
+        // Demonstrates the use of an event other than GET_GAMEPAD_EVENT.
+        FSM6.defineTransition(DecodeTeleOpState.LIFT_IN_PROGRESS, DecodeTeleOpEvent.WAIT_LIFT_DONE, new ArrayList<>(Arrays.asList(
+                // The driver lets the lifter run to completion.
+                new GenericFSM6.Transition<>(DecodeTeleOpState.FINISH,
+                        // Guard condition
+                        this::checkLiftDone,
+                        // Action
+                        () -> DecodeTeleOpEvent.EXIT
+                ),
+
+                // The driver requests an immediate stop.
+                new GenericFSM6.Transition<>(DecodeTeleOpState.STOP_LIFTER_REQUESTED,
+                        // Guard condition
+                        () -> stopLifterButton.is(FTCButton.State.TAP),
+                        // Action
+                        () -> DecodeTeleOpEvent.WAIT_LIFT_DONE
+                ))));
+
+        // The driver has requested an immediate stop to the lifter.
+        // Wait for an acknowledgement.
+        FSM6.defineTransition(DecodeTeleOpState.STOP_LIFTER_REQUESTED, DecodeTeleOpEvent.WAIT_LIFT_DONE,
+                new GenericFSM6.Transition<>(DecodeTeleOpState.FINISH,
+                        // Guard condition
+                        this::checkLiftDone,
+                        // Action
+                        () -> DecodeTeleOpEvent.EXIT
                 ));
     }
 
@@ -393,35 +454,14 @@ public class DecodeTeleOpFSM {
         RobotLogCommon.d(TAG, "Resume intake in forward direction");
     }
 
-    //**TODO Don't be lazy - make a LiftMotionFuture and put the timer there.
     private void startLiftAction() {
-        RobotLogCommon.d(TAG, "Lift started");
-
-        /*
-        CompletableFuture<Void> localLiftFuture = liftMotionContainer.startLift();
-        if (localLiftFuture == null)
-            throw new AutonomousRobotException(TAG, "Illegal state: request to start the lift when the lift is already in progress");
-
-        liftFuture = localLiftFuture; // lift thread is running
-         */
-
-        // The following would have to be put into a Future so that
-        // we could poll isDone();
-        // For this demonstration just start a two-second timer.
-        liftStart = Instant.now();
-
-        /*
-        FTCRobot.MotorTarget<Lifter.LifterPosition, Integer> target = robot.lifter.getClicksToPosition(Lifter.LifterPosition.RAISE);
-        Objects.requireNonNull(lifterMotion, TAG + " The Lifter is not in the configuration")
-                .moveLifter(target, robot.lifter.velocity, FTCRobot.MotorAction.MOVE_AND_STOP);
-         */
+        completableMoveLifter = Threading.launchAsync(callableMoveLifter);
+        RobotLogCommon.d(TAG, "Lifter started");
     }
 
-    // Check whether the lift simulation is done.
+    // Check whether the lifter simulation is done.
     private boolean checkLiftDone() {
-        Instant liftCheck = Instant.now();
-        long secondsElapsed = Duration.between(liftStart, liftCheck).toSeconds();
-        return secondsElapsed == 2;
+        return completableMoveLifter.isDone();
     }
 
 }

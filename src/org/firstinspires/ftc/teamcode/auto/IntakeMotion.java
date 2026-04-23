@@ -7,6 +7,7 @@ import org.firstinspires.ftc.ftcdevcommon.platform.intellij.RobotLogCommon;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 // 4/10/2026 Copied in to this project from commit a3c55d0
@@ -31,7 +32,7 @@ public class IntakeMotion {
     public IntakeMotion() {
     }
 
-    // Start up intake for Auto as a CompletableFuture.
+    // Start up intake as a CompletableFuture.
     // Return the Future so that the caller can manage
     // its completion. Make sure that this can't be called
     // while an intakeFuture is already running.
@@ -62,7 +63,7 @@ public class IntakeMotion {
 
     // This will cause the CompletableFuture to exit after
     // it has completed the current operation.
-    public synchronized void stopIntake() {
+    public void stopIntake() {
         stopIntake.set(true);
     }
 
@@ -75,11 +76,11 @@ public class IntakeMotion {
         intakeFuture.complete(0);
     }
 
-    // CallableFuture that takes in Decode artifacts and
-    // exits when the revolver is full or the driver
-    // requests a stop. Returns the number of artifacts in
-    // the revolver at the time of completion. On completion
-    // the caller must stop the turning of the intake servos.
+    // CallableFuture that simulates the intake of Decode
+    // artifacts and exits when the revolver is full (by
+    // time) or the driver requests a stop. Returns the
+    // number of artifacts in the revolver at the time of
+    // completion.
     private class IntakeCallable extends AutoWorker<Integer> {
         IntakeCallable() {
             super();
@@ -104,6 +105,12 @@ public class IntakeMotion {
                     artifactsInRevolver++; // increment on a 1-second boundary
                     if (++boundary > artifactsToIntake)
                         break;
+                }
+
+                try {
+                    TimeUnit.MILLISECONDS.sleep(25);
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
                 }
             }
 

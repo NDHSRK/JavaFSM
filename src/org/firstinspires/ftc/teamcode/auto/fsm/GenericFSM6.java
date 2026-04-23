@@ -1,14 +1,6 @@
 // *************************************************************************
 //
-//  Filename:     GenericFSM.java
-//
-//  Purpose:      See below
-//
-//  Modification History:
-//  Date          Name        Change
-//
-//  07-Mar-2021   PYoung      Upgrade Java version to support lambda action
-//                            routines.
+// Generic Finite State Machine for Java
 //
 // ***************************************************************************
 
@@ -42,15 +34,11 @@ public class GenericFSM6<S extends Enum<S>, E extends Enum<E>> {
     // the Transition class, and 3. A Callable<E> pAction, which,
     // if non-null, can modify any accessible field or call any
     // accessible method, and returns the next event that the state
-    // machine should feed to the next state. If pAction returns null,
-    // the state machine will get the next event from its normal
-    // sources such as button clicks; if the next event is a named
-    // value, the state machine will make a transition without an
-    // external event.
+    // machine should feed to the next state.
 
     // Why Callable<V> instead Supplier<T>? Because a Callable can
-    // throw a checked exception, which allows the callers of the FSM
-    // to manage their own error handling.
+    // throw a checked exception, which allows the callers of the
+    // FSM to manage their own error handling.
     // From the Java documentation:
     // V call() throws Exception;
 

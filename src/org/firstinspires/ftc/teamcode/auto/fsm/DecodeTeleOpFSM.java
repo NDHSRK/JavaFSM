@@ -322,7 +322,7 @@ public class DecodeTeleOpFSM {
 
     // Action routine methods.
     // Intake
-    //**TODO Log button press
+    //**TODO Log/print button press
     private void intakeOnAction() {
         /*
         robot.frontIntakeMotor.intake();
@@ -396,6 +396,14 @@ public class DecodeTeleOpFSM {
     //**TODO Don't be lazy - make a LiftMotionFuture and put the timer there.
     private void startLiftAction() {
         RobotLogCommon.d(TAG, "Lift started");
+
+        /*
+        CompletableFuture<Void> localLiftFuture = liftMotionContainer.startLift();
+        if (localLiftFuture == null)
+            throw new AutonomousRobotException(TAG, "Illegal state: request to start the lift when the lift is already in progress");
+
+        liftFuture = localLiftFuture; // lift thread is running
+         */
 
         // The following would have to be put into a Future so that
         // we could poll isDone();

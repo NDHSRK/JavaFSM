@@ -15,7 +15,7 @@ public class Main {
 
     public static void main(String[] args) throws Exception {
 
-        // TEMP to test the JInput/FTC gamepad translation.
+        //**TODO put this into a test class for the JInput/FTC gamepad translation.
         /*
         Controller[] controllers = ControllerEnvironment.getDefaultEnvironment().getControllers();
         for (Controller c : controllers) {

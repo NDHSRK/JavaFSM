@@ -13,7 +13,6 @@ package org.firstinspires.ftc.teamcode.auto.fsm;
 import net.java.games.input.Controller;
 import net.java.games.input.ControllerEnvironment;
 import org.firstinspires.ftc.ftcdevcommon.AutonomousRobotException;
-import org.firstinspires.ftc.ftcdevcommon.Pair;
 import org.firstinspires.ftc.ftcdevcommon.Threading;
 import org.firstinspires.ftc.ftcdevcommon.platform.intellij.RobotLogCommon;
 import org.firstinspires.ftc.ftcdevcommon.platform.intellij.WorkingDirectory;
@@ -136,12 +135,15 @@ public class DecodeTeleOpFSM {
                 previousEvent = nextEvent;
 
                 // Move the FSM.
-                nextEvent = moveTeleOpFSM(nextEvent);
+                nextEvent = FSM6.processEvent(nextEvent);
 
                 // Limit logging to a change in state or event.
                 if (FSM6.getCurrentState() != previousCurrentState || nextEvent != previousEvent) {
                     RobotLogCommon.d(TAG, "FSM current state " + previousCurrentState + ", current event " + previousEvent);
+                    System.out.println("FSM current state " + previousCurrentState + ", current event " + previousEvent);
+
                     RobotLogCommon.d(TAG, "FSM new current state " + FSM6.getCurrentState() + ", next event " + nextEvent);
+                    System.out.println("FSM new current state " + FSM6.getCurrentState() + ", next event " + nextEvent);
                 }
             }
 
@@ -157,25 +159,8 @@ public class DecodeTeleOpFSM {
         }
     }
 
-    private DecodeTeleOpEvent moveTeleOpFSM(DecodeTeleOpEvent pEvent) throws Exception {
-        DecodeTeleOpEvent nextEvent;
-        Pair<DecodeTeleOpState, DecodeTeleOpEvent> processEventOutput = FSM6.processEvent(pEvent);
-        if (processEventOutput.first == null)
-            throw new AutonomousRobotException(TAG, "No transition for state " + FSM6.getCurrentState() + " and event " + pEvent);
-        else {
-            if (processEventOutput.second == null) { // default
-                nextEvent = DecodeTeleOpEvent.GET_GAMEPAD_EVENT;
-            } else {
-                nextEvent = processEventOutput.second;
-                RobotLogCommon.d(TAG, "Internal event " + processEventOutput.second + " supplied by an action routine");
-            }
-        }
-
-        return nextEvent;
-    }
-
     private void initializeFSM() {
-        FSM6.defineTransition(DecodeTeleOpState.START, DecodeTeleOpEvent.GET_GAMEPAD_EVENT, new ArrayList<>(Arrays.asList(
+        FSM6.defineTransition(DecodeTeleOpState.START, DecodeTeleOpEvent.GET_GAMEPAD_EVENT,
                 // Button press to turn intake ON. Assume the Revolver is empty.
                 new GenericFSM6.Transition<>(DecodeTeleOpState.INTAKE_IN_PROGRESS,
                         // Guard condition
@@ -183,16 +168,9 @@ public class DecodeTeleOpFSM {
                         // Action
                         () -> {
                             intakeOnAction();
-                            return null;
+                            return DecodeTeleOpEvent.GET_GAMEPAD_EVENT;
                         }
-                ),
-
-                // Default/idle
-                new GenericFSM6.Transition<>(DecodeTeleOpState.START,
-                        null,
-                        // Action
-                        null
-                ))));
+                ));
 
         // Intake is running.
         FSM6.defineTransition(DecodeTeleOpState.INTAKE_IN_PROGRESS, DecodeTeleOpEvent.GET_GAMEPAD_EVENT, new ArrayList<>(Arrays.asList(
@@ -204,7 +182,7 @@ public class DecodeTeleOpFSM {
                         // Action
                         () -> {
                             intakeDoneAction(); // sets the artifactsInRevolver field
-                            return null;
+                            return DecodeTeleOpEvent.GET_GAMEPAD_EVENT;
                         }
                 ),
 
@@ -217,7 +195,7 @@ public class DecodeTeleOpFSM {
                         () -> {
                             intakeOffAction();
                             intakeDoneAction(); // sets the artifactsInRevolver field
-                            return null;
+                            return DecodeTeleOpEvent.GET_GAMEPAD_EVENT;
                         }
                 ),
 
@@ -228,16 +206,8 @@ public class DecodeTeleOpFSM {
                         // Action
                         () -> {
                             outtakeOnDuringIntakeAction();
-                            return null;
+                            return DecodeTeleOpEvent.GET_GAMEPAD_EVENT;
                         }
-                ),
-
-                // Default/idle
-                new GenericFSM6.Transition<>(DecodeTeleOpState.INTAKE_IN_PROGRESS,
-                        // Guard condition
-                        null,
-                        // Action
-                        null
                 ))));
 
         // Intake is complete: the revolver is full or intake has
@@ -269,7 +239,7 @@ public class DecodeTeleOpFSM {
                         // Action
                         () -> {
                             intakeOnAction();
-                            return null;
+                            return DecodeTeleOpEvent.GET_GAMEPAD_EVENT;
                         }
                 ),
 
@@ -280,38 +250,23 @@ public class DecodeTeleOpFSM {
                         // Action
                         () -> {
                             outtakeOnAction();
-                            return null;
+                            return DecodeTeleOpEvent.GET_GAMEPAD_EVENT;
                         }
-                ),
-
-                // Default/idle
-                new GenericFSM6.Transition<>(DecodeTeleOpState.INTAKE_DONE,
-                        // Guard condition
-                        null,
-                        // Action
-                        null
                 ))));
 
         // The lift is running; wait for completion.
         // Demonstrates the use of an event other than GET_GAMEPAD_EVENT.
-        FSM6.defineTransition(DecodeTeleOpState.LIFT_IN_PROGRESS, DecodeTeleOpEvent.WAIT_LIFT_DONE, new ArrayList<>(Arrays.asList(
+        FSM6.defineTransition(DecodeTeleOpState.LIFT_IN_PROGRESS, DecodeTeleOpEvent.WAIT_LIFT_DONE,
                 // The driver cancels outtake by letting go of the button.
                 new GenericFSM6.Transition<>(DecodeTeleOpState.FINISH,
                         // Guard condition
-                        () -> !outtakeButton.is(FTCButton.State.HELD),
-                        // Action
-                        () -> DecodeTeleOpEvent.EXIT
-                ),
-
-                // Default/idle
-                new GenericFSM6.Transition<>(DecodeTeleOpState.LIFT_IN_PROGRESS,
                         this::checkLiftDone,
                         // Action
-                        () -> DecodeTeleOpEvent.WAIT_LIFT_DONE
-                ))));
+                        () -> DecodeTeleOpEvent.EXIT
+                ));
 
         // Outtake when intake is *not* running.
-        FSM6.defineTransition(DecodeTeleOpState.OUTTAKE_IN_PROGRESS, DecodeTeleOpEvent.GET_GAMEPAD_EVENT, new ArrayList<>(Arrays.asList(
+        FSM6.defineTransition(DecodeTeleOpState.OUTTAKE_IN_PROGRESS, DecodeTeleOpEvent.GET_GAMEPAD_EVENT,
                 // The driver cancels outtake by letting go of the button.
                 new GenericFSM6.Transition<>(DecodeTeleOpState.OUTTAKE_DONE,
                         // Guard condition
@@ -319,16 +274,9 @@ public class DecodeTeleOpFSM {
                         // Action
                         () -> {
                             outtakeOffAction();
-                            return null;
+                            return DecodeTeleOpEvent.GET_GAMEPAD_EVENT;
                         }
-                ),
-
-                // Default/idle
-                new GenericFSM6.Transition<>(DecodeTeleOpState.OUTTAKE_IN_PROGRESS,
-                        null,
-                        // Action
-                        null
-                ))));
+                ));
 
         // Outtake has been turned OFF.
         // At this point the revolver may contain from 0 to 3 artifacts.
@@ -340,7 +288,7 @@ public class DecodeTeleOpFSM {
                         // Action
                         () -> {
                             intakeOnAction();
-                            return null;
+                            return DecodeTeleOpEvent.GET_GAMEPAD_EVENT;
                         }
                 ),
 
@@ -351,56 +299,21 @@ public class DecodeTeleOpFSM {
                         // Action
                         () -> {
                             outtakeOnAction();
-                            return null;
+                            return DecodeTeleOpEvent.GET_GAMEPAD_EVENT;
                         }
-                ),
-
-                // Default/idle
-                new GenericFSM6.Transition<>(DecodeTeleOpState.OUTTAKE_DONE,
-                        // Guard condition
-                        null,
-                        // Action
-                        null
                 ))));
 
         // Outtake when intake is paused.
-        FSM6.defineTransition(DecodeTeleOpState.INTAKE_PAUSED_AND_OUTTAKE_IN_PROGRESS, DecodeTeleOpEvent.GET_GAMEPAD_EVENT, new ArrayList<>(Arrays.asList(
+        FSM6.defineTransition(DecodeTeleOpState.INTAKE_PAUSED_AND_OUTTAKE_IN_PROGRESS, DecodeTeleOpEvent.GET_GAMEPAD_EVENT,
                 new GenericFSM6.Transition<>(DecodeTeleOpState.INTAKE_IN_PROGRESS,
                         // Guard condition
                         () -> !outtakeButton.is(FTCButton.State.HELD),
                         // Action
                         () -> {
                             outtakeOffDuringIntakeAction();
-                            return null;
+                            return DecodeTeleOpEvent.GET_GAMEPAD_EVENT;
                         }
-                ),
-
-                // Default/idle
-                new GenericFSM6.Transition<>(DecodeTeleOpState.INTAKE_PAUSED_AND_OUTTAKE_IN_PROGRESS,
-                        null,
-                        // Action
-                        null
-                ))));
-
-        // Lift has been started.
-        FSM6.defineTransition(DecodeTeleOpState.LIFT_IN_PROGRESS, DecodeTeleOpEvent.WAIT_LIFT_DONE, new ArrayList<>(Arrays.asList(
-                new GenericFSM6.Transition<>(DecodeTeleOpState.INTAKE_IN_PROGRESS,
-                        // Guard condition
-                        () -> !outtakeButton.is(FTCButton.State.HELD),
-                        // Action
-                        () -> {
-                            outtakeOffDuringIntakeAction();
-                            return null;
-                        }
-                ),
-
-                // Default/idle
-                new GenericFSM6.Transition<>(DecodeTeleOpState.INTAKE_PAUSED_AND_OUTTAKE_IN_PROGRESS,
-                        null,
-                        // Action
-                        null
-                ))));
-
+                ));
     }
 
     // Guard condition methods.
@@ -480,6 +393,7 @@ public class DecodeTeleOpFSM {
         RobotLogCommon.d(TAG, "Resume intake in forward direction");
     }
 
+    //**TODO Don't be lazy - make a LiftMotionFuture and put the timer there.
     private void startLiftAction() {
         RobotLogCommon.d(TAG, "Lift started");
 

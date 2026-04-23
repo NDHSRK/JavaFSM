@@ -71,19 +71,27 @@ public class GenericFSM6<S extends Enum<S>, E extends Enum<E>> {
     // Define the transitions in the state machine by calling either of
     // the overloads (or mix and match) multiple times to set up.
 
-    // The simplest state transition without any guard conditions/
-    // action routines.
+    // The simplest state transition without any guard conditions/action routines.
     public void defineTransition(S pSourceState, E pEvent, S pDestinationState) {
+        Objects.requireNonNull(pDestinationState, "FSM: destination state must not be null");
         defineTransition(pSourceState, pEvent, new ArrayList<>(Collections.singletonList(new Transition<>(pDestinationState, null, null))));
     }
 
+    // State transition with a single guard condition/action routine.
     public void defineTransition(S pSourceState, E pEvent, Transition<S, E> pTransition) {
+        Objects.requireNonNull(pTransition, "FSM: transition must not be null");
         defineTransition(pSourceState, pEvent, new ArrayList<>(Collections.singletonList(pTransition)));
     }
 
-    // State transition that includes non-null guard conditions/
-    // action routines.
+    // State transition with a collection of guard conditions/action routines.
     public void defineTransition(S pSourceState, E pEvent, List<Transition<S, E>> pTransitions) {
+        // All arguments must be non-null and the collection of transitions must not be empty.
+        Objects.requireNonNull(pSourceState, "FSM: source state must not be null");
+        Objects.requireNonNull(pEvent, "FSM: event must not be null");
+        Objects.requireNonNull(pTransitions, "FSM: collection of transitions must not be null");
+        if (pTransitions.isEmpty())
+            throw new IllegalStateException("FSM: collection of transitions must not be empty");
+
         // If the source state is already in the collection as a key then add to the map
         // that must already exist as its value.
         if (FSM.containsKey(pSourceState)) {
@@ -96,7 +104,7 @@ public class GenericFSM6<S extends Enum<S>, E extends Enum<E>> {
             // The event must not already be in the map.
             if (eventMap.containsKey(pEvent))
                 throw new IllegalStateException("FSM: event "
-                        + pEvent.toString() + " already present for state " + currentState);
+                        + pEvent.toString() + " already present for state " + pSourceState);
             eventMap.put(pEvent, pTransitions);
         } else {
             // Insert a new source state along with its associated event and
@@ -120,16 +128,11 @@ public class GenericFSM6<S extends Enum<S>, E extends Enum<E>> {
 
     // Move the state machinery in response to an event. Look at
     // the list of possible transitions, each of which may have
-    // a guard condition and/or and action routine. Returns the
-    // next state, which may be null if no transition is defined
-    // for the current state and the argument pEvent, and the
-    // next event, which may be null if not specified by the
-    // action routine.
-    public Pair<S, E> processEvent(E pEvent) throws Exception {
+    // a nullable guard condition and a nullable action routine.
+    public E processEvent(E pEvent) throws Exception {
         List<Transition<S, E>> transitions = getTransitions(pEvent);
-        S nextState = null;
         Callable<Boolean> guard;
-        E nextEvent = null;
+        E nextEvent = pEvent;
         for (Transition<S, E> oneTransition : transitions) {
             guard = oneTransition.guardCondition;
             if (guard != null && !guard.call()) {
@@ -137,24 +140,31 @@ public class GenericFSM6<S extends Enum<S>, E extends Enum<E>> {
                 continue;
             }
 
-            // Got a valid transition.
-            // Instead of throwing an IllegalStateException on
-            // a null next state just return the null and let
-            // the caller handle it.
-            nextState = oneTransition.getNextState();
+            // Got a valid transition: the guard condition was null,
+            // which indicates an automatic success, or the non-null
+            // guard condition succeeded.
+            S nextState = oneTransition.getNextState();
+            if (nextState == null)
+                throw new IllegalStateException("FSM: next state not defined for current state " + currentState +
+                        " and transition " + oneTransition);
+
             currentState = nextState;
+
+            // Get the action routine for the current transition.
+            // if it is null, the next event will be the same as
+            // the current event.
             Callable<E> actionRoutine = oneTransition.actionRoutine;
             if (actionRoutine == null) {
                 break;
             }
 
-            // For an internal transition return a non-null event
-            // from the non-null action routine.
+            // A non-null action routine returns an event that may
+            // or may not be different from the current event.
             nextEvent = oneTransition.executeActionRoutine();
             break;
         }
 
-        return Pair.create(nextState, nextEvent);
+        return nextEvent;
     }
 
     // Get the transition(s) associated with an event.
@@ -162,10 +172,8 @@ public class GenericFSM6<S extends Enum<S>, E extends Enum<E>> {
         // Use the current state as a key into the FSM.
         // The value of the first lookup is a map of events and state
         // transitions.
-        if (!FSM.containsKey(currentState)) {
-            throw new IllegalStateException("FSM: current state is not in the FSM: "
-                    + currentState.toString());
-        }
+        if (!FSM.containsKey(currentState))
+            throw new IllegalStateException("FSM: current state " + currentState.toString() + "is not in the FSM");
 
         // Use the current state as a key into the map of state transitions to
         // find the destination state and action routine.
@@ -178,15 +186,12 @@ public class GenericFSM6<S extends Enum<S>, E extends Enum<E>> {
 
         // Error out if the current state does not have a transition
         // for the current event.
-        throw new IllegalStateException("FSM: event "
-                + pEvent.toString() + " not present for state " + currentState);
+        throw new IllegalStateException("FSM: current state " + currentState +
+                 " has no transitions for event "+ pEvent.toString());
     }
 
-    // A Transition consists of a next state (S) and an Optional
-    // action routine that returns an Optional next event. A
-    // non-empty Optional next internal event indicates that the
-    // state machine should make an internal transition based on
-    // this event.
+    // A Transition consists of a next state (S), a nullable guard
+    // condition, and a nullable action routine.
     public static class Transition<S, E> {
         private final S nextState;
         private final Callable<Boolean> guardCondition;

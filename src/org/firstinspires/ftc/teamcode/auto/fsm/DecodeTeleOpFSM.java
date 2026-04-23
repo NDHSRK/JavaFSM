@@ -68,6 +68,8 @@ public class DecodeTeleOpFSM {
 
     public DecodeTeleOpFSM(int pNumGamepads, int pArtifactsToIntake) {
         String logDirPath = WorkingDirectory.getWorkingDirectory() + RobotConstants.logDir;
+        //**TODO Why AUTO_LOG?
+        //**TODO IJ Logging option: duplicate to System.out.println()
         RobotLogCommon.OpenStatus openStatus = RobotLogCommon.initialize(RobotLogCommon.LogIdentifier.AUTO_LOG,
                 logDirPath);
         RobotLogCommon.c(TAG, "Constructing DecodeTeleOpFSM");
@@ -139,9 +141,6 @@ public class DecodeTeleOpFSM {
 
                 // Limit logging to a change in state or event.
                 if (FSM6.getCurrentState() != previousCurrentState || nextEvent != previousEvent) {
-                    RobotLogCommon.d(TAG, "FSM current state " + previousCurrentState + ", current event " + previousEvent);
-                    System.out.println("FSM current state " + previousCurrentState + ", current event " + previousEvent);
-
                     RobotLogCommon.d(TAG, "FSM new current state " + FSM6.getCurrentState() + ", next event " + nextEvent);
                     System.out.println("FSM new current state " + FSM6.getCurrentState() + ", next event " + nextEvent);
                 }
@@ -323,6 +322,7 @@ public class DecodeTeleOpFSM {
 
     // Action routine methods.
     // Intake
+    //**TODO Log button press
     private void intakeOnAction() {
         /*
         robot.frontIntakeMotor.intake();

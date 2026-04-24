@@ -232,7 +232,7 @@ public class DecodeTeleOpFSM {
                 // The Revolver may or may not be full.
                 new GenericFSM6.Transition<>(DecodeTeleOpState.INTAKE_DONE,
                         // Guard condition
-                        () -> !intakeButton.is(FTCButton.State.HELD),
+                        () -> intakeButton.is(FTCButton.State.UP),
                         // Action
                         () -> {
                             intakeOffAction();
@@ -301,7 +301,7 @@ public class DecodeTeleOpFSM {
                 // The driver cancels outtake by letting go of the button.
                 new GenericFSM6.Transition<>(DecodeTeleOpState.OUTTAKE_DONE,
                         // Guard condition
-                        () -> !outtakeButton.is(FTCButton.State.HELD),
+                        () -> outtakeButton.is(FTCButton.State.UP),
                         // Action
                         () -> {
                             outtakeOffAction();
@@ -338,7 +338,7 @@ public class DecodeTeleOpFSM {
         FSM6.defineTransition(DecodeTeleOpState.INTAKE_PAUSED_AND_OUTTAKE_IN_PROGRESS, DecodeTeleOpEvent.GET_GAMEPAD_EVENT,
                 new GenericFSM6.Transition<>(DecodeTeleOpState.INTAKE_IN_PROGRESS,
                         // Guard condition
-                        () -> !outtakeButton.is(FTCButton.State.HELD),
+                        () -> outtakeButton.is(FTCButton.State.UP),
                         // Action
                         () -> {
                             outtakeOffDuringIntakeAction();

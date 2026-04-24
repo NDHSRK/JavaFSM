@@ -6,8 +6,6 @@ import java.util.function.Supplier;
 // tracking its state.
 public class FTCButton {
 
-    public static final String TAG = FTCButton.class.getSimpleName();
-
     public enum State { // button states
         TAP,        // button pressed
         DOUBLE_TAP, // pressed down in quick succession
@@ -21,33 +19,25 @@ public class FTCButton {
     private State state = State.OFF;
     private long lastTapped = -1;
 
-    private long timeHeld = 0;
-
     public FTCButton(Supplier<Boolean> pButtonValue) {
         buttonValue = pButtonValue;
     }
 
-    //**TODO State.UP is not used; timeHeld not used either - revert to 10.1.1
+    // State.UP can be used to detect the release of a held button.
     public void update() {
         if (buttonValue.get()) {
             if (state == State.OFF || state == State.UP) {
                 if (System.currentTimeMillis() - lastTapped < DOUBLE_TAP_INTERVAL_MS) {
                     lastTapped = System.currentTimeMillis();
                     state = State.DOUBLE_TAP;
-                    timeHeld = 0;
                 } else {
                     lastTapped = System.currentTimeMillis();
                     state = State.TAP;
-                    timeHeld = 0;
                 }
-            }
-            else {
+            } else {
                 state = State.HELD;
-                timeHeld = System.currentTimeMillis() - lastTapped;
             }
-        }
-        else
-        if (state == State.HELD || state == State.TAP || state == State.DOUBLE_TAP)
+        } else if (state == State.HELD || state == State.TAP || state == State.DOUBLE_TAP)
             state = State.UP;
         else
             state = State.OFF;
@@ -57,12 +47,9 @@ public class FTCButton {
         return state == pState;
     }
 
-    //**TODO For testing
+    // For testing
     public State getState() {
         return state;
     }
 
-    public long getTimeHeld(){
-        return timeHeld;
-    }
 }

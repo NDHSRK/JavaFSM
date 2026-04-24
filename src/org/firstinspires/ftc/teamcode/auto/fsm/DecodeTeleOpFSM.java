@@ -1,15 +1,5 @@
 package org.firstinspires.ftc.teamcode.auto.fsm;
 
-
-// Demonstration of the use of a Finite State Machine in TeleOp for the
-// Decode game. Based on public class DecodeTeleOpFSM extends TeleOpBase
-// in the package package org.firstinspires.ftc.teamcode.teleop.opmodes.test.teleopfsm
-// in Github commit 90e7194 of the project FtcDecode_11.1.0_RR_4348.
-
-// The demonstration is limited to the intake of artifacts, with the support
-// of temporary outtake, up to the point that the driver interrupts intake
-// or the Revolver is full.
-
 import net.java.games.input.Controller;
 import net.java.games.input.ControllerEnvironment;
 import org.firstinspires.ftc.ftcdevcommon.AutonomousRobotException;
@@ -29,6 +19,15 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+// Demonstration of the use of a generic Finite State Machine in TeleOp
+// for the Decode game. Based on public class DecodeTeleOpFSM extends
+// TeleOpBase in
+//   package org.firstinspires.ftc.teamcode.teleop.opmodes.test.teleopfsm
+// in Github commit 90e7194 of the project FtcDecode_11.1.0_RR_4348.
+
+// The demonstration includes 1) the intake of artifacts, with the support
+// of temporary outtake, up to the point that the driver interrupts intake
+// or the Revolver is full and 2) the raising of the lifter.
 public class DecodeTeleOpFSM {
 
     private static final String TAG = DecodeTeleOpFSM.class.getSimpleName();
@@ -39,7 +38,7 @@ public class DecodeTeleOpFSM {
         INTAKE_IN_PROGRESS, INTAKE_DONE,
         OUTTAKE_IN_PROGRESS, OUTTAKE_DONE,
         INTAKE_PAUSED_AND_OUTTAKE_IN_PROGRESS,
-        LIFT_IN_PROGRESS, STOP_LIFTER_REQUESTED,
+        LIFTER_IN_PROGRESS, STOP_LIFTER_REQUESTED,
         FINISH
     }
 
@@ -142,10 +141,10 @@ public class DecodeTeleOpFSM {
             throw new AutonomousRobotException(TAG, "Required two F310 controllers but found only one");
 
         intakeButton = new FTCButton(() -> FTCGamepad.gamepadButtonPressed(f310Gamepad1, FTCGamepad.FTCButtonId.GAMEPAD_A));
-        outtakeButton = new FTCButton(() -> FTCGamepad.gamepadButtonPressed(f310Gamepad1, FTCGamepad.FTCButtonId.GAMEPAD_X));
+        outtakeButton = new FTCButton(() -> FTCGamepad.gamepadButtonPressed(f310Gamepad1, FTCGamepad.FTCButtonId.GAMEPAD_B));
         lifterButton = new FTCButton(() -> FTCGamepad.gamepadButtonPressed(f310Gamepad1, FTCGamepad.FTCButtonId.GAMEPAD_Y));
         stopLifterButton = new FTCButton(() -> FTCGamepad.gamepadButtonPressed(f310Gamepad1, FTCGamepad.FTCButtonId.GAMEPAD_LEFT_BUMPER));
-        exitButton = new FTCButton(() -> FTCGamepad.gamepadButtonPressed(f310Gamepad1, FTCGamepad.FTCButtonId.GAMEPAD_B));
+        exitButton = new FTCButton(() -> FTCGamepad.gamepadButtonPressed(f310Gamepad1, FTCGamepad.FTCButtonId.GAMEPAD_X));
 
         // Set up all states and transitions.
         initializeFSM();
@@ -286,7 +285,7 @@ public class DecodeTeleOpFSM {
                 ),
 
                 // Start the lifter.
-                new GenericFSM6.Transition<>(DecodeTeleOpState.LIFT_IN_PROGRESS,
+                new GenericFSM6.Transition<>(DecodeTeleOpState.LIFTER_IN_PROGRESS,
                         // Guard condition
                         () -> lifterButton.is(FTCButton.State.DOUBLE_TAP),
                         // Action
@@ -348,7 +347,7 @@ public class DecodeTeleOpFSM {
 
         // The lifter is running; wait for completion.
         // Demonstrates the use of an event other than GET_GAMEPAD_EVENT.
-        FSM6.defineTransition(DecodeTeleOpState.LIFT_IN_PROGRESS, DecodeTeleOpEvent.WAIT_LIFT_DONE, new ArrayList<>(Arrays.asList(
+        FSM6.defineTransition(DecodeTeleOpState.LIFTER_IN_PROGRESS, DecodeTeleOpEvent.WAIT_LIFT_DONE, new ArrayList<>(Arrays.asList(
                 // The driver lets the lifter run to completion.
                 new GenericFSM6.Transition<>(DecodeTeleOpState.FINISH,
                         // Guard condition

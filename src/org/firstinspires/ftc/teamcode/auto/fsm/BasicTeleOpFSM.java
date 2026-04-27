@@ -19,7 +19,7 @@ public class BasicTeleOpFSM {
         INTAKE_IN_PROGRESS, INTAKE_DONE,
         OUTTAKE_IN_PROGRESS, OUTTAKE_DONE,
         INTAKE_PAUSED_AND_OUTTAKE_IN_PROGRESS,
-        LIFTER_IN_PROGRESS, STOP_LIFTER_REQUESTED,
+        LIFTER_IN_PROGRESS,
         FINISH
     }
 
@@ -60,6 +60,7 @@ public class BasicTeleOpFSM {
         DecodeTeleOpState state = DecodeTeleOpState.START;
         boolean runFSM = true;
         while (runFSM) {
+
             intakeButton.update();
             outtakeButton.update();
             lifterButton.update();

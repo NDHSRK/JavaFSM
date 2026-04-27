@@ -47,9 +47,8 @@ public class FTCButton {
         return state == pState;
     }
 
-    // For testing
-    public State getState() {
-        return state;
+    public void reset() {
+        state = State.OFF;
     }
 
 }

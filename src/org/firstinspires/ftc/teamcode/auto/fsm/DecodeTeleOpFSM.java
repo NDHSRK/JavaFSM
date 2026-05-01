@@ -69,9 +69,8 @@ public class DecodeTeleOpFSM {
 
     public DecodeTeleOpFSM(int pNumGamepads, int pArtifactsToIntake) {
         String logDirPath = WorkingDirectory.getWorkingDirectory() + RobotConstants.logDir;
-        //**TODO IJ Logging option: mirror to System.out.println()
         RobotLogCommon.OpenStatus openStatus = RobotLogCommon.initialize(RobotLogCommon.LogIdentifier.TELEOP_LOG,
-                logDirPath);
+                RobotLogCommon.LoggingMode.MIRROR_TO_SYSOUT, logDirPath);
         if (openStatus != RobotLogCommon.OpenStatus.NEW_LOGGER_CREATED)
             throw new AutonomousRobotException(TAG, "Logger not initialized");
 
@@ -125,7 +124,6 @@ public class DecodeTeleOpFSM {
             DecodeTeleOpEvent nextEvent = DecodeTeleOpEvent.GET_GAMEPAD_EVENT;
 
             RobotLogCommon.d(TAG, "Starting FSM at state " + FSM6.getCurrentState() + ", next event " + nextEvent);
-            System.out.println("Starting FSM at state " + FSM6.getCurrentState() + ", next event " + nextEvent);
 
             while (nextEvent != DecodeTeleOpEvent.EXIT) {
                 // Updating all button states here is safer even though
@@ -156,19 +154,14 @@ public class DecodeTeleOpFSM {
                 // Limit logging to a change in state or event.
                 if (FSM6.getCurrentState() != previousCurrentState || nextEvent != previousEvent) {
                     RobotLogCommon.d(TAG, "FSM new current state " + FSM6.getCurrentState() + ", next event " + nextEvent);
-                    System.out.println("FSM new current state " + FSM6.getCurrentState() + ", next event " + nextEvent);
                 }
             }
 
             RobotLogCommon.d(TAG, "Done traversing the state machine at state " + FSM6.getCurrentState());
-            System.out.println("Done traversing the state machine at state " + FSM6.getCurrentState());
-
             RobotLogCommon.d(TAG, "Artifacts in the Revolver " + artifactsInRevolver);
-            System.out.println("Artifacts in the Revolver " + artifactsInRevolver);
-
         } finally {
             RobotLogCommon.d(TAG, "In finally() block");
-            //intakeMotion.stopIntakeThread();
+            intakeMotion.stopIntakeThread();
         }
     }
 

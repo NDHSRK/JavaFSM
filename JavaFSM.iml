@@ -7,16 +7,15 @@
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
+    <orderEntry type="library" name="jinput-2.0.10" level="project" />
     <orderEntry type="module-library">
       <library>
         <CLASSES>
-          <root url="file://$MODULE_DIR$/../FTCDevCommonIntelliJ/out/artifacts/ftcdevcommon_2_5_jar" />
+          <root url="jar://$MODULE_DIR$/../FTCDevCommonIntelliJ/out/artifacts/ftcdevcommon_2_6_jar/ftcdevcommon_2_6.jar!/" />
         </CLASSES>
         <JAVADOC />
         <SOURCES />
-        <jarDirectory url="file://$MODULE_DIR$/../FTCDevCommonIntelliJ/out/artifacts/ftcdevcommon_2_5_jar" recursive="false" />
       </library>
     </orderEntry>
-    <orderEntry type="library" name="jinput-2.0.10" level="project" />
   </component>
 </module>

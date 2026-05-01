@@ -20,7 +20,7 @@ import org.firstinspires.ftc.ftcdevcommon.Pair;
 import java.util.*;
 import java.util.concurrent.Callable;
 
-// Generic types: state (S), internal event enumeration (E).
+// Generic types: state enumeration (S), event enumeration (E).
 public class GenericFSM6<S extends Enum<S>, E extends Enum<E>> {
 
     // The FSM is an EnumMap whose key is the current state (S); the

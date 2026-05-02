@@ -84,8 +84,10 @@ public class BasicIntakeFSM {
 
             switch (nextState) {
                 case START: {
+                    // Guard
                     if (intakeButton.is(FTCButton.State.TAP)) {
                         nextState = DecodeTeleOpState.INTAKE_IN_PROGRESS;
+                        // Action
                         System.out.println("Intake button pressed; transition to state " + DecodeTeleOpState.INTAKE_IN_PROGRESS);
                         /*
                         intakeOnAction();

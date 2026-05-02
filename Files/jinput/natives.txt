@@ -1,0 +1,4 @@
+2/13/2026
+
+Changed the extension of jinput-2.0.10-natives-all.jar to .zip
+and extracted the dll files into the folder jinput-2.0.10-natives-all

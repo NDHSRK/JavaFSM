@@ -11,7 +11,7 @@
     <orderEntry type="module-library">
       <library>
         <CLASSES>
-          <root url="jar://$MODULE_DIR$/../FTCDevCommonIntelliJ/out/artifacts/ftcdevcommon_2_6_jar/ftcdevcommon_2_6.jar!/" />
+          <root url="jar://$MODULE_DIR$/Files/ftcdevcommon_2_6_jar/ftcdevcommon_2_6.jar!/" />
         </CLASSES>
         <JAVADOC />
         <SOURCES />

@@ -74,9 +74,10 @@ public class BasicIntakeFSM {
                 System.out.println("Found a Logitech controller with the name " + c.getName());
                 if (f310Gamepad1 == null)
                     f310Gamepad1 = c; // gamepad 1
-                else
+                else {
                     f310Gamepad2 = c; // gamepad 2
-                break;
+                    break;
+                }
             }
         }
 
@@ -86,7 +87,6 @@ public class BasicIntakeFSM {
             throw new AutonomousRobotException(TAG, "Expected one F310 controller but found two");
         if (pNumGamepads == 2 && f310Gamepad2 == null)
             throw new AutonomousRobotException(TAG, "Required two F310 controllers but found only one");
-
 
         intakeButton = new FTCButton(() -> FTCGamepad.gamepadButtonPressed(f310Gamepad1, FTCGamepad.FTCButtonId.GAMEPAD_A));
         outtakeButton = new FTCButton(() -> FTCGamepad.gamepadButtonPressed(f310Gamepad1, FTCGamepad.FTCButtonId.GAMEPAD_B));
@@ -126,6 +126,7 @@ public class BasicIntakeFSM {
 
             switch (nextState) {
                 case START: {
+                    // Button press to turn intake ON. Assume the Revolver is empty.
                     // Guard
                     if (intakeButton.is(FTCButton.State.TAP)) {
                         nextState = DecodeTeleOpState.INTAKE_IN_PROGRESS;
@@ -139,53 +140,80 @@ public class BasicIntakeFSM {
                 }
 
                 case INTAKE_IN_PROGRESS: {
-                    /*
                     // The driver is still holding the intake button but intake
                     // has completed automatically because the Revolver is full.
-                    new GenericFSM6.Transition<>(DecodeTeleOpState.INTAKE_DONE,
-                        // Guard condition
-                        () -> intakeButton.is(FTCButton.State.HELD) && intakeFuture.isDone(),
-                        // Action
-                        () -> {
-                            intakeDoneAction(); // sets the artifactsInRevolver field
-                            return DecodeTeleOpEvent.GET_GAMEPAD_EVENT;
-                        }
-                        ),
-                     */
-                    if (outtakeButton.is(FTCButton.State.TAP)) {
-                        nextState = DecodeTeleOpState.OUTTAKE_IN_PROGRESS;
-                        System.out.println("Outtake button pressed; transition to state " + DecodeTeleOpState.OUTTAKE_IN_PROGRESS);
-                    } else if (lifterButton.is(FTCButton.State.TAP)) {
-                        nextState = DecodeTeleOpState.LIFTER_IN_PROGRESS;
-                        System.out.println("Lifter button pressed; transition to state " + DecodeTeleOpState.LIFTER_IN_PROGRESS);
-                    } else if (exitButton.is(FTCButton.State.TAP)) {
-                        nextState = DecodeTeleOpState.FINISH;
-                        System.out.println("Exit button pressed; transition to state " + DecodeTeleOpState.FINISH);
-                    }
+                    // Guard
+                    // Action
+
+                    // The driver has released the intake button; stop intake.
+                    // The Revolver may or may not be full.
+
+                    // Turn outtake ON while intake is in progress.
+                    // Guard
+                    // Action
+
                     break;
                 }
 
+                // Intake is complete: the revolver is full or intake has
+                // been turned off with 0 - 2 artifacts in the revolver.
                 case INTAKE_DONE: {
-                    //**TODO import from DecodeTeleOpFSM
+                    // For the demonstration, exit on a button press.
+                    // Gaurd
+                    // Action
+
+                    // Check button press to turn intake back ON; the revolver must not be full.
+                    // Guard
+                    // Action
+
+                    // Turn outtake ON when intake is not running.
+                    // Guard
+                    // Action
+
+                    // Start the lifter.
+                    // Guard
+                    // nextEvent = DecodeTeleOpEvent.CHECK_LIFTER_DONE;
+                    // Action
+
                     break;
                 }
 
+                // Outtake when intake is *not* running.
                 case OUTTAKE_IN_PROGRESS: {
-                    if (lifterButton.is(FTCButton.State.TAP)) {
-                        nextState = DecodeTeleOpState.LIFTER_IN_PROGRESS;
-                        System.out.println("Lifter button pressed; transition to state " + DecodeTeleOpState.LIFTER_IN_PROGRESS);
-                    } else if (exitButton.is(FTCButton.State.TAP)) {
-                        nextState = DecodeTeleOpState.FINISH;
-                        System.out.println("Exit button pressed; transition to state " + DecodeTeleOpState.FINISH);
-                    }
+                    // The driver cancels outtake by letting go of the button.
+                    // Guard
+                    // Action
                     break;
                 }
 
+                // Outtake has been turned OFF.
+                // At this point the revolver may contain from 0 to 3 artifacts.
+                case OUTTAKE_DONE: {
+                    // Check button press to turn intake back ON; the revolver must not be full.
+                    // Guard
+                    // Action
+
+                    // Check button press to turn intake back ON; the revolver must not be full.
+                    // Guard
+                    // Action
+                    break;
+                }
+
+                // Outtake when intake is paused.
+                case INTAKE_PAUSED_AND_OUTTAKE_IN_PROGRESS: {
+                    // Guard
+                    // Action
+                    break;
+                }
+
+                // The lifter is running; wait for completion.
+                // Demonstrates the use of an event other than GET_GAMEPAD_EVENT.
                 case LIFTER_IN_PROGRESS: {
-                    if (exitButton.is(FTCButton.State.TAP)) {
-                        nextState = DecodeTeleOpState.FINISH;
-                        System.out.println("Exit button pressed; transition to state " + DecodeTeleOpState.FINISH);
-                    }
+                    // The driver lets the lifter run to completion.
+                    // Guard
+                    nextState = DecodeTeleOpState.FINISH;
+                    nextEvent = DecodeTeleOpEvent.EXIT;
+                    // Action
                     break;
                 }
 

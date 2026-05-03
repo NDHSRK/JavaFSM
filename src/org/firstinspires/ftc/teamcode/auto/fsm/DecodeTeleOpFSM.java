@@ -87,9 +87,10 @@ public class DecodeTeleOpFSM {
                 System.out.println("Found a Logitech controller with the name " + c.getName());
                 if (f310Gamepad1 == null)
                     f310Gamepad1 = c; // gamepad 1
-                else
+                else {
                     f310Gamepad2 = c; // gamepad 2
-                break;
+                    break;
+                }
             }
         }
 

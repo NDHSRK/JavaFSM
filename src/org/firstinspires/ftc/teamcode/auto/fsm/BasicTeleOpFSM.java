@@ -1,7 +1,7 @@
 package org.firstinspires.ftc.teamcode.auto.fsm;
 
-// Reconstruction of the FSM from Pratt's video https://www.youtube.com/watch?v=RweqIqouYqM
-// adapted to the use of JInput for the gamepad and the states in the generic DecodeTeleOpFSM.
+// Reconstruction of the FSM from Brogan Pratt's video https://www.youtube.com/watch?v=RweqIqouYqM
+// adapted to the use of JInput for the gamepad and the states in the DecodeGenericFSM.
 
 import net.java.games.input.Controller;
 import net.java.games.input.ControllerEnvironment;

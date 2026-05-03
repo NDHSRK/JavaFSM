@@ -53,12 +53,10 @@ public class DecodeTeleOpFSM {
     private final FTCButton intakeButton;
     private final IntakeMotion intakeMotion;
     private CompletableFuture<Integer> intakeFuture;
-
-    private final FTCButton outtakeButton;
-
     private int artifactsToIntake;
     private int artifactsInRevolver = 0;
 
+    private final FTCButton outtakeButton;
     private final FTCButton lifterButton;
     private final FTCButton stopLifterButton;
     private Instant lifterTimerStart;
@@ -76,9 +74,9 @@ public class DecodeTeleOpFSM {
 
         RobotLogCommon.c(TAG, "Constructing DecodeTeleOpFSM");
 
-        // Gamepad controllers.
         artifactsToIntake = pArtifactsToIntake;
 
+        // Gamepad controllers.
         //**TODO On every start: INFO: Failed to initialize device HIDI2C Device because of: java.io.IOException: Failed to acquire device (8007001e)
         // Causes "No controllers found" System.setProperty("net.java.games.input.useDefaultPlugin", "false");
 
@@ -337,7 +335,6 @@ public class DecodeTeleOpFSM {
 
     // Action routine methods.
     // Intake
-    //**TODO Log/print button press
     private void intakeOnAction() {
         /*
         robot.frontIntakeMotor.intake();

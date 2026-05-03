@@ -17,9 +17,9 @@ import java.util.concurrent.CompletableFuture;
 import java.time.Instant;
 import java.util.concurrent.TimeoutException;
 
-public class BasicIntakeFSM {
+public class DecodeIntakeFSM {
 
-    private static final String TAG = BasicIntakeFSM.class.getSimpleName();
+    private static final String TAG = DecodeIntakeFSM.class.getSimpleName();
 
     private enum DecodeTeleOpState {
         START,
@@ -41,7 +41,7 @@ public class BasicIntakeFSM {
     private final FTCButton intakeButton;
     private final IntakeMotion intakeMotion;
     private CompletableFuture<Integer> intakeFuture;
-    private int artifactsToIntake;
+    private int artifactsToIntake = RobotConstantsDecode.MAX_ARTIFACTS_IN_REVOLVER;
     private int artifactsInRevolver = 0;
 
     private final FTCButton outtakeButton;
@@ -52,7 +52,7 @@ public class BasicIntakeFSM {
     private static final long lifterDone = 5; // simulate a five-second lift
     private final FTCButton exitButton;
 
-    public BasicIntakeFSM(int pNumGamepads, int pArtifactsToIntake) {
+    public DecodeIntakeFSM(int pNumGamepads) {
         String logDirPath = WorkingDirectory.getWorkingDirectory() + RobotConstants.logDir;
         RobotLogCommon.OpenStatus openStatus = RobotLogCommon.initialize(RobotLogCommon.LogIdentifier.TELEOP_LOG,
                 RobotLogCommon.LoggingMode.MIRROR_TO_SYSOUT, logDirPath);
@@ -60,8 +60,6 @@ public class BasicIntakeFSM {
             throw new AutonomousRobotException(TAG, "Logger not initialized");
 
         RobotLogCommon.c(TAG, "Constructing BasicIntakeFSM");
-
-        artifactsToIntake = pArtifactsToIntake;
 
         // Gamepad controllers.
         //**TODO On every start: INFO: Failed to initialize device HIDI2C Device because of: java.io.IOException: Failed to acquire device (8007001e)
@@ -102,6 +100,9 @@ public class BasicIntakeFSM {
         System.out.println("From state " + DecodeTeleOpState.OUTTAKE_IN_PROGRESS + " press Y to start the lifter, or X to exit");
         System.out.println("From state " + DecodeTeleOpState.LIFTER_IN_PROGRESS + " press X to exit");
 
+        //**TODO !!WARNING!! The code below will not run correctly
+        // until the code for all of the cases has been filled in.
+
         DecodeTeleOpState nextState = DecodeTeleOpState.START;
         DecodeTeleOpEvent nextEvent = DecodeTeleOpEvent.GET_GAMEPAD_EVENT;
         while (nextEvent != DecodeTeleOpEvent.EXIT) {
@@ -132,7 +133,6 @@ public class BasicIntakeFSM {
                         nextState = DecodeTeleOpState.INTAKE_IN_PROGRESS;
                         // Action
                         System.out.println("Intake button pressed; transition to state " + DecodeTeleOpState.INTAKE_IN_PROGRESS);
-
                         intakeOnAction();
                         nextEvent = DecodeTeleOpEvent.GET_GAMEPAD_EVENT;
                     }
@@ -143,14 +143,28 @@ public class BasicIntakeFSM {
                     // The driver is still holding the intake button but intake
                     // has completed automatically because the Revolver is full.
                     // Guard
+                    // if (intakeButton.is(FTCButton.State.HELD) && intakeFuture.isDone())
                     // Action
+                    // intakeDoneAction(); // sets the artifactsInRevolver field
+                    nextState = DecodeTeleOpState.INTAKE_DONE;
+                    nextEvent = DecodeTeleOpEvent.GET_GAMEPAD_EVENT;
 
                     // The driver has released the intake button; stop intake.
                     // The Revolver may or may not be full.
+                    // else
+                    // Guard
+                    // if (intakeButton.is(FTCButton.State.UP))
+                    // Action
+                    nextState = DecodeTeleOpState.INTAKE_DONE;
+                    nextEvent = DecodeTeleOpEvent.GET_GAMEPAD_EVENT;
 
                     // Turn outtake ON while intake is in progress.
+                    // else
                     // Guard
+                    // if (outtakeButton.is(FTCButton.State.TAP))
                     // Action
+                    nextState = DecodeTeleOpState.INTAKE_PAUSED_AND_OUTTAKE_IN_PROGRESS;
+                    nextEvent = DecodeTeleOpEvent.GET_GAMEPAD_EVENT;
 
                     break;
                 }
@@ -189,11 +203,15 @@ public class BasicIntakeFSM {
                 // Outtake has been turned OFF.
                 // At this point the revolver may contain from 0 to 3 artifacts.
                 case OUTTAKE_DONE: {
-                    // Check button press to turn intake back ON; the revolver must not be full.
+                    // Allow an immediate exit.
                     // Guard
                     // Action
 
                     // Check button press to turn intake back ON; the revolver must not be full.
+                    // Guard
+                    // Action
+
+                    // Check button press to turn outtake back ON.
                     // Guard
                     // Action
                     break;

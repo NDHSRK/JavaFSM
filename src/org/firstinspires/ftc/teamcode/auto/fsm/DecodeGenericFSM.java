@@ -25,9 +25,9 @@ import java.util.concurrent.TimeoutException;
 // The demonstration includes 1) the intake of artifacts, with the support
 // of temporary outtake, up to the point that the driver interrupts intake
 // or the Revolver is full and 2) the raising of the lifter.
-public class DecodeTeleOpFSM {
+public class DecodeGenericFSM {
 
-    private static final String TAG = DecodeTeleOpFSM.class.getSimpleName();
+    private static final String TAG = DecodeGenericFSM.class.getSimpleName();
 
     // Finite state machine.
     private enum DecodeTeleOpState {
@@ -53,7 +53,7 @@ public class DecodeTeleOpFSM {
     private final FTCButton intakeButton;
     private final IntakeMotion intakeMotion;
     private CompletableFuture<Integer> intakeFuture;
-    private int artifactsToIntake;
+    private int artifactsToIntake = RobotConstantsDecode.MAX_ARTIFACTS_IN_REVOLVER;
     private int artifactsInRevolver = 0;
 
     private final FTCButton outtakeButton;
@@ -65,7 +65,7 @@ public class DecodeTeleOpFSM {
     private final FTCButton exitButton;
 
 
-    public DecodeTeleOpFSM(int pNumGamepads, int pArtifactsToIntake) {
+    public DecodeGenericFSM(int pNumGamepads) {
         String logDirPath = WorkingDirectory.getWorkingDirectory() + RobotConstants.logDir;
         RobotLogCommon.OpenStatus openStatus = RobotLogCommon.initialize(RobotLogCommon.LogIdentifier.TELEOP_LOG,
                 RobotLogCommon.LoggingMode.MIRROR_TO_SYSOUT, logDirPath);
@@ -73,8 +73,6 @@ public class DecodeTeleOpFSM {
             throw new AutonomousRobotException(TAG, "Logger not initialized");
 
         RobotLogCommon.c(TAG, "Constructing DecodeTeleOpFSM");
-
-        artifactsToIntake = pArtifactsToIntake;
 
         // Gamepad controllers.
         //**TODO On every start: INFO: Failed to initialize device HIDI2C Device because of: java.io.IOException: Failed to acquire device (8007001e)
@@ -275,6 +273,14 @@ public class DecodeTeleOpFSM {
         // Outtake has been turned OFF.
         // At this point the revolver may contain from 0 to 3 artifacts.
         FSM6.defineTransition(DecodeTeleOpState.OUTTAKE_DONE, DecodeTeleOpEvent.GET_GAMEPAD_EVENT, new ArrayList<>(Arrays.asList(
+                // Allow an immediate exit.
+                new GenericFSM6.Transition<>(DecodeTeleOpState.FINISH,
+                        // Guard condition
+                        () -> exitButton.is(FTCButton.State.TAP),
+                        // Action
+                        () -> DecodeTeleOpEvent.EXIT
+                ),
+
                 // Check button press to turn intake back ON; the revolver must not be full.
                 new GenericFSM6.Transition<>(DecodeTeleOpState.INTAKE_IN_PROGRESS,
                         // Guard condition
@@ -286,7 +292,7 @@ public class DecodeTeleOpFSM {
                         }
                 ),
 
-                // Turn outtake ON (intake is not running).
+                // Turn outtake back ON (intake is not running).
                 new GenericFSM6.Transition<>(DecodeTeleOpState.OUTTAKE_IN_PROGRESS,
                         // Guard condition
                         () -> outtakeButton.is(FTCButton.State.TAP),

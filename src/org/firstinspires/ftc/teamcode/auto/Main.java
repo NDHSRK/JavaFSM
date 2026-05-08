@@ -15,7 +15,7 @@ public class Main {
         // to intake from the command line.
         // --numGamepads [1 | 2]
 
-        if (args.length != 2 || !args[0].equals("--artifactsToIntake"))
+        if (args.length != 2 || !args[0].equals("--numGamepads"))
             throw new AutonomousRobotException("Main", "Invalid argument list");
 
         int numGamepads = Integer.parseInt(args[1]);

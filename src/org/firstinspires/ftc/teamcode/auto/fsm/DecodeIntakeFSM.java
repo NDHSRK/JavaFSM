@@ -95,9 +95,9 @@ public class DecodeIntakeFSM {
         // Initialize simulated intake.
         intakeMotion = new IntakeMotion();
 
-        System.out.println("To start intake, press A");
-        System.out.println("From state " + DecodeTeleOpState.INTAKE_IN_PROGRESS + " press B to start outtake, Y to start the lifter, or X to exit");
-        System.out.println("From state " + DecodeTeleOpState.OUTTAKE_IN_PROGRESS + " press Y to start the lifter, or X to exit");
+        System.out.println("To start intake, press and HOLD A");
+        System.out.println("From state " + DecodeTeleOpState.INTAKE_IN_PROGRESS + " press B to start outtake, DOUBLE Y to start the lifter, or X to exit");
+        System.out.println("From state " + DecodeTeleOpState.OUTTAKE_IN_PROGRESS + " DOUBLE press Y to start the lifter, or X to exit");
         System.out.println("From state " + DecodeTeleOpState.LIFTER_IN_PROGRESS + " press X to exit");
 
         //**TODO !!WARNING!! The code below will not run correctly

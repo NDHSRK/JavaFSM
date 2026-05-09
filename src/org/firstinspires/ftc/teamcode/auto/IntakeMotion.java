@@ -93,6 +93,7 @@ public class IntakeMotion {
             Instant check;
             long secondsElapsed;
             int boundary = 1;
+            //**TODO BUG - the timer will continue to run during a pause!!
             while (!stopThreadRequested() && !Thread.interrupted() && !stopIntake.get()) {
                 // Check for a requested pause in intake while outtake is in progress.
                 if (pauseIntake)
@@ -117,6 +118,45 @@ public class IntakeMotion {
             return artifactsInRevolver;
         }
     }
+
+    //**TODO Adapt this to the use of Instant.
+    /*
+                boolean intakePaused = false;
+            boolean transitionToPause = true;
+            ElapsedTime pauseTimer = new ElapsedTime();
+            double totalTimePaused = 0.0;
+            ElapsedTime intakeTimer = new ElapsedTime();
+            intakeTimer.reset();
+            int boundary = 1;
+            while (!stopThreadRequested() && !Thread.interrupted() && !stopIntake.get()) {
+                // Check for a requested pause in intake while outtake is in progress.
+                // Start a pause timer here to get the time spent in this pause.
+                if (pauseIntake) {
+                    if (transitionToPause) {
+                        transitionToPause = false;
+                        intakePaused = true;
+                        pauseTimer.reset();
+                    }
+                    continue;
+                }
+
+                // If we've just come out of a pause, add the time spent in the
+                // pause to the total.
+                if (intakePaused) {
+                    intakePaused = false;
+                    transitionToPause = true; // for the next time around
+                    totalTimePaused += pauseTimer.milliseconds();
+                }
+
+                // Check to see if the intake timer (minus all time spent
+                // in a pause) has crossed a boundary, e.g. zero to one
+                // seconds.
+                if ((intakeTimer.milliseconds() - totalTimePaused) / 1000 == boundary) {
+                    artifactsInRevolver++; // increment on a 1-second boundary
+                    if (++boundary > artifactsToIntake)
+                        break;
+                }
+     */
 
 }
 

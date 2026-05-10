@@ -7,11 +7,11 @@ import org.firstinspires.ftc.ftcdevcommon.platform.intellij.RobotLogCommon;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-// 4/10/2026 Copied in to this project from commit a3c55d0
-// (3/6/2026) of project FtcDecode_11.1.0_RR_4348.
+// 4/10/2026 The starting point is a class of the same name copied
+// in to this project from commit a3c55d0 (3/6/2026) of project
+// FtcDecode_11.1.0_RR_4348.
 
 // Class that starts up a CompletableFuture whose Callable runs
 // until it fills the revolver by taking in 3 artifacts or until
@@ -78,9 +78,10 @@ public class IntakeMotion {
 
     // CallableFuture that simulates the intake of Decode
     // artifacts and exits when the revolver is full (by
-    // time) or the driver requests a stop. Returns the
-    // number of artifacts in the revolver at the time of
-    // completion.
+    // the expiration of a 3-second timer, i.e. 1 second
+    // per artifact) or the driver requests a stop.
+    // Returns the number of artifacts in the revolver at
+    // the time of completion.
     private class IntakeCallable extends AutoWorker<Integer> {
         IntakeCallable() {
             super();
@@ -89,45 +90,13 @@ public class IntakeMotion {
         public Integer call() {
             RobotLogCommon.d(TAG, "Intake future is running");
 
-            Instant start = Instant.now();
-            Instant check;
-            long secondsElapsed;
-            int boundary = 1;
-            //**TODO BUG - the timer will continue to run during a pause!!
-            while (!stopThreadRequested() && !Thread.interrupted() && !stopIntake.get()) {
-                // Check for a requested pause in intake while outtake is in progress.
-                if (pauseIntake)
-                    continue;
+            Instant intakeTimer = Instant.now();  // start timer for total elapsed time including pauses
 
-                // Simulate the intake of one artifact per second up to the target
-                check = Instant.now();
-                secondsElapsed = Duration.between(start, check).toSeconds();
-                if (secondsElapsed == boundary) {
-                    artifactsInRevolver++; // increment on a 1-second boundary
-                    if (++boundary > artifactsToIntake)
-                        break;
-                }
-
-                try {
-                    TimeUnit.MILLISECONDS.sleep(25);
-                } catch (InterruptedException ie) {
-                    Thread.currentThread().interrupt();
-                }
-            }
-
-            return artifactsInRevolver;
-        }
-    }
-
-    //**TODO Adapt this to the use of Instant.
-    /*
-                boolean intakePaused = false;
             boolean transitionToPause = true;
-            ElapsedTime pauseTimer = new ElapsedTime();
-            double totalTimePaused = 0.0;
-            ElapsedTime intakeTimer = new ElapsedTime();
-            intakeTimer.reset();
-            int boundary = 1;
+            boolean intakePaused = false;
+            Instant pauseTimer = Instant.now(); // timer for a single pause
+            long totalTimePaused = 0;
+            int boundary = 1; // 1 second per artifact
             while (!stopThreadRequested() && !Thread.interrupted() && !stopIntake.get()) {
                 // Check for a requested pause in intake while outtake is in progress.
                 // Start a pause timer here to get the time spent in this pause.
@@ -135,7 +104,7 @@ public class IntakeMotion {
                     if (transitionToPause) {
                         transitionToPause = false;
                         intakePaused = true;
-                        pauseTimer.reset();
+                        pauseTimer = Instant.now();
                     }
                     continue;
                 }
@@ -145,18 +114,22 @@ public class IntakeMotion {
                 if (intakePaused) {
                     intakePaused = false;
                     transitionToPause = true; // for the next time around
-                    totalTimePaused += pauseTimer.milliseconds();
+                    totalTimePaused += Math.abs(Duration.between(intakeTimer, pauseTimer).toMillis());
                 }
 
-                // Check to see if the intake timer (minus all time spent
-                // in a pause) has crossed a boundary, e.g. zero to one
-                // seconds.
-                if ((intakeTimer.milliseconds() - totalTimePaused) / 1000 == boundary) {
+                // Check to see if the intake timer (minus time spent in all pauses)
+                // has crossed a boundary, e.g. zero to one seconds.
+                long totalElapsedTime = Duration.between(intakeTimer, Instant.now()).toMillis();
+                if ((totalElapsedTime - totalTimePaused) / 1000 == boundary) {
                     artifactsInRevolver++; // increment on a 1-second boundary
                     if (++boundary > artifactsToIntake)
                         break;
                 }
-     */
+            }
+
+            return artifactsInRevolver;
+        }
+    }
 
 }
 

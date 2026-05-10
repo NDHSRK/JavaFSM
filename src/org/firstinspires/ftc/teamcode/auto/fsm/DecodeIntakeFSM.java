@@ -100,9 +100,6 @@ public class DecodeIntakeFSM {
         System.out.println("From state " + DecodeTeleOpState.OUTTAKE_IN_PROGRESS + " DOUBLE press Y to start the lifter, or X to exit");
         System.out.println("From state " + DecodeTeleOpState.LIFTER_IN_PROGRESS + " press X to exit");
 
-        //**TODO !!WARNING!! The code below will not run correctly
-        // until the code for all of the cases has been filled in.
-
         DecodeTeleOpState nextState = DecodeTeleOpState.START;
         DecodeTeleOpEvent nextEvent = DecodeTeleOpEvent.GET_GAMEPAD_EVENT;
         while (nextEvent != DecodeTeleOpEvent.EXIT) {
@@ -145,7 +142,7 @@ public class DecodeIntakeFSM {
                         // has completed automatically because the Revolver is full.
                         nextState = DecodeTeleOpState.INTAKE_DONE;
                         // Action
-                        System.out.println("Intake finished; transition to state" + DecodeTeleOpState.INTAKE_DONE);
+                        System.out.println("Intake finished; transition to state " + DecodeTeleOpState.INTAKE_DONE);
                         intakeDoneAction();
                         nextEvent = DecodeTeleOpEvent.GET_GAMEPAD_EVENT;
                     } else if (intakeButton.is(FTCButton.State.UP)) {
@@ -160,7 +157,7 @@ public class DecodeIntakeFSM {
                         // Turn outtake ON while intake is in progress.
                         nextState = DecodeTeleOpState.INTAKE_PAUSED_AND_OUTTAKE_IN_PROGRESS;
                         // Action
-                        System.out.println("Intake paused and outtake in progress; transition to state" + DecodeTeleOpState.INTAKE_PAUSED_AND_OUTTAKE_IN_PROGRESS);
+                        System.out.println("Intake paused and outtake in progress; transition to state " + DecodeTeleOpState.INTAKE_PAUSED_AND_OUTTAKE_IN_PROGRESS);
                         outtakeOnDuringIntakeAction();
                         nextEvent = DecodeTeleOpEvent.GET_GAMEPAD_EVENT;
                     }

@@ -16,14 +16,7 @@
         <SOURCES />
       </library>
     </orderEntry>
-    <orderEntry type="module-library">
-      <library>
-        <CLASSES>
-          <root url="jar://$MODULE_DIR$/Files/jinput/jinput-2.0.10.jar!/" />
-        </CLASSES>
-        <JAVADOC />
-        <SOURCES />
-      </library>
-    </orderEntry>
+    <orderEntry type="library" name="jinput-2.0.10" level="project" />
+    <orderEntry type="library" name="jinput-2.0.10-natives-all" level="project" />
   </component>
 </module>

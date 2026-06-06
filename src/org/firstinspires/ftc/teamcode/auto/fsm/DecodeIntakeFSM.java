@@ -122,6 +122,11 @@ public class DecodeIntakeFSM {
                 exitButton.reset();
             }
 
+            //**TODO Note: to be correct, each state should ensure that the current
+            // event applies to the state. If a state reacts only to one evvent then
+            // a simple if (nextEvent != DecodeTeleOpEvent.GET_GAMEPAD_EVENT) ->
+            // state error is good enough. Otherwise a switch/case construct will
+            // be required. [comment copied to AS project ftc-decode-post-season]
             switch (nextState) {
                 case START: {
                     // Button press to turn intake ON. Assume the Revolver is empty.

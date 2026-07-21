@@ -1,7 +1,8 @@
 package org.firstinspires.ftc.teamcode.auto.fsm;
 
-// Reconstruction of the FSM from Pratt's video https://www.youtube.com/watch?v=RweqIqouYqM
-// adapted to the use of JInput for the gamepad and the states in the generic DecodeTeleOpFSM.
+// IntelliJ testbed for the development of a Finite State Machine that can
+// later be ported into the FTC environment in Android Studio.
+// This testbed uses the JInput library to get input from a gamepad.
 
 import net.java.games.input.Controller;
 import net.java.games.input.ControllerEnvironment;
@@ -17,6 +18,8 @@ import java.util.concurrent.CompletableFuture;
 import java.time.Instant;
 import java.util.concurrent.TimeoutException;
 
+// Emulate a portion of the intake logic from FTC Team 4348's TeleOp Opmode
+// in the FTC Decode game.
 public class DecodeIntakeFSM {
 
     private static final String TAG = DecodeIntakeFSM.class.getSimpleName();
@@ -267,7 +270,6 @@ public class DecodeIntakeFSM {
                     }
                     break;
                 }
-
             }
         }
     }

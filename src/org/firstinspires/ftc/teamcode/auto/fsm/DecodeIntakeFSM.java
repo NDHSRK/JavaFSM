@@ -115,6 +115,10 @@ public class DecodeIntakeFSM {
                 stopLifterButton.update();
                 exitButton.update();
             } else {
+                //**TODO What if you wanted to add a panic stop to
+                // LIFTER_IN_PROGRESS? If you reset the exitButton
+                // on every cycle, you won't see the request. AS also.
+
                 // But if we have a state whose transitions don't
                 // need to look at any buttons, make sure all the
                 // buttons will be OFF on the next cycle.
